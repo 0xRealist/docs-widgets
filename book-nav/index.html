@@ -43,6 +43,12 @@
     background: var(--panel);
   }
   .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+  .id { display: flex; align-items: center; gap: 0.7rem; }
+  .logo {
+    width: 42px; height: 42px; border-radius: 50%; flex: 0 0 auto;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  }
   .label {
     font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase;
     color: var(--muted); margin-bottom: 0.35rem; display: flex; align-items: center; gap: 6px;
@@ -80,9 +86,12 @@
 <body>
   <div class="card">
     <div class="top">
-      <div>
-        <div class="label"><span class="dot"></span> Book NAV Price · live</div>
-        <div id="price" class="price skel">$—</div>
+      <div class="id">
+        <img class="logo" src="./rwt.png" alt="RWT" width="42" height="42" />
+        <div>
+          <div class="label"><span class="dot"></span> Book NAV Price · live</div>
+          <div id="price" class="price skel">$—</div>
+        </div>
       </div>
       <div id="pill" class="pill">since launch</div>
     </div>
