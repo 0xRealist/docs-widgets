@@ -70,7 +70,9 @@
   </div>
 
 <script>
-  const RPC = "https://api.mainnet-beta.solana.com";
+  // Public CORS-enabled RPC (api.mainnet-beta blocks browser requests).
+  // Swap for a dedicated endpoint (Helius / Triton / QuickNode) for production reliability.
+  const RPC = "https://solana-rpc.publicnode.com";
   const CONFIG = "5GyVeryGnTPPtfteYaj5pNUjE9s2DDDpDnccgoFjV8L3"; // EarnConfig PDA (Book NAV numerator)
   const MINT = "RWTeFt9M635Tf6w6yveAoXQR2ZwfXs7MfA7W3grDuGT";    // RWT mint
   const SCALE = 1000000n; // NAV_SCALE = 1e6 (USDC 6 decimals)
