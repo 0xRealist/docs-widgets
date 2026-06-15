@@ -64,16 +64,16 @@
     <div id="total" class="total skel">$—</div>
 
     <div class="dbar">
-      <span style="width:30%;background:#8aa0c8"></span>
+      <span style="width:40%;background:#8aa0c8"></span>
       <span style="width:30%;background:#e3c27a"></span>
-      <span style="width:30%;background:#5fbf9b"></span>
+      <span style="width:20%;background:#5fbf9b"></span>
       <span style="width:10%;background:#aebfdb"></span>
     </div>
 
     <div class="rows">
-      <div class="drow"><span class="dc" style="background:#8aa0c8"></span><span class="pc">30%</span><span class="dl">Compounding</span><span id="d-comp" class="da skel">$—</span></div>
+      <div class="drow"><span class="dc" style="background:#8aa0c8"></span><span class="pc">40%</span><span class="dl">Compounding</span><span id="d-comp" class="da skel">$—</span></div>
       <div class="drow"><span class="dc" style="background:#e3c27a"></span><span class="pc">30%</span><span class="dl">stRWT staking</span><span id="d-stake" class="da skel">$—</span></div>
-      <div class="drow"><span class="dc" style="background:#5fbf9b"></span><span class="pc">30%</span><span class="dl">Liquidity</span><span id="d-liq" class="da skel">$—</span></div>
+      <div class="drow"><span class="dc" style="background:#5fbf9b"></span><span class="pc">20%</span><span class="dl">Liquidity</span><span id="d-liq" class="da skel">$—</span></div>
       <div class="drow"><span class="dc" style="background:#aebfdb"></span><span class="pc">10%</span><span class="dl">Areal Finance DAO</span><span id="d-dao" class="da skel">$—</span></div>
     </div>
 
@@ -121,16 +121,17 @@
       const nav = rwtSupply === 0 ? 1 : Number(capital) / rwtSupply;
       const supplyHuman = rwtSupply / 1e6;
 
-      const comp = Math.max(0, nav - 1) * supplyHuman; // 30% compounding (NAV growth)
-      const total = comp / 0.30;                        // implied 100%
-      const share30 = total * 0.30;
+      const comp = Math.max(0, nav - 1) * supplyHuman; // 40% compounding (NAV growth)
+      const total = comp / 0.40;                        // implied 100%
+      const stake = total * 0.30;
+      const liq = total * 0.20;
       const dao = total * 0.10;
 
       ["total", "d-comp", "d-stake", "d-liq", "d-dao"].forEach((id) => $(id).classList.remove("skel"));
       $("total").textContent = fmt(total);
       $("d-comp").textContent = fmt(comp);
-      $("d-stake").textContent = fmt(share30);
-      $("d-liq").textContent = fmt(share30);
+      $("d-stake").textContent = fmt(stake);
+      $("d-liq").textContent = fmt(liq);
       $("d-dao").textContent = fmt(dao);
       $("status").textContent = "Updated " + new Date().toISOString().slice(11, 19) + " UTC · every 30s";
       $("status").classList.remove("err");
