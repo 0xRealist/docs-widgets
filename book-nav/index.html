@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RWT Book NAV</title>
+<style>
+  :root {
+    --fg: #11151c;
+    --muted: rgba(17, 21, 28, 0.6);
+    --panel: rgba(138, 160, 200, 0.08);
+    --border: rgba(138, 160, 200, 0.28);
+    --accent: #5b6f94;
+    --err: #c0392b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fg: #e9eef6;
+      --muted: rgba(233, 238, 246, 0.6);
+      --panel: rgba(138, 160, 200, 0.07);
+      --border: rgba(138, 160, 200, 0.25);
+      --accent: #aebfdb;
+      --err: #e06b6b;
+    }
+  }
+  html, body { margin: 0; background: transparent; }
+  body {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+    color: var(--fg);
+  }
+  .card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    background: var(--panel);
+  }
+  .label {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #41c98a; display: inline-block;
+    box-shadow: 0 0 0 0 rgba(65, 201, 138, 0.6);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(65, 201, 138, 0.5); }
+    70% { box-shadow: 0 0 0 6px rgba(65, 201, 138, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(65, 201, 138, 0); }
+  }
+  .price { font-size: 32px; font-weight: 700; line-height: 1.1; }
+  .sub { font-size: 13px; color: var(--muted); margin-top: 0.4rem; }
+  .sub a { color: var(--accent); text-decoration: none; }
+  .sub a:hover { text-decoration: underline; }
+  .err { font-size: 13px; color: var(--err); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="label"><span class="dot"></span> Book NAV Price · live from chain</div>
+    <div id="price" class="price">…</div>
+    <div id="sub" class="sub"></div>
+  </div>
+
+<script>
+  const RPC = "https://api.mainnet-beta.solana.com";
+  const CONFIG = "5GyVeryGnTPPtfteYaj5pNUjE9s2DDDpDnccgoFjV8L3"; // EarnConfig PDA (Book NAV numerator)
+  const MINT = "RWTeFt9M635Tf6w6yveAoXQR2ZwfXs7MfA7W3grDuGT";    // RWT mint
+  const SCALE = 1000000n; // NAV_SCALE = 1e6 (USDC 6 decimals)
+
+  const fmt = (n, d) => n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+
+  async function rpc(method, params) {
+    const r = await fetch(RPC, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+    });
+    return r.json();
+  }
+
+  async function load() {
+    try {
+      const [acc, sup] = await Promise.all([
+        rpc("getAccountInfo", [CONFIG, { encoding: "base64" }]),
+        rpc("getTokenSupply", [MINT]),
+      ]);
+      const bin = atob(acc.result.value.data[0]);
+      let capital = 0n; // total_invested_capital: u128 LE at offset 8
+      for (let i = 0; i < 16; i++) capital += BigInt(bin.charCodeAt(8 + i)) << (8n * BigInt(i));
+      const supply = BigInt(sup.result.value.amount);
+      const navMicro = supply === 0n ? SCALE : (capital * SCALE) / supply;
+      const price = Number(navMicro) / 1e6;
+      document.getElementById("price").textContent = "$" + fmt(price, 6);
+      document.getElementById("sub").innerHTML =
+        "Invested capital $" + fmt(Number(capital) / 1e6, 2) +
+        " · Supply " + fmt(Number(supply) / 1e6, 2) + " RWT · " +
+        '<a href="https://solscan.io/token/' + MINT + '" target="_blank" rel="noreferrer">verify on-chain ↗</a>';
+    } catch (e) {
+      document.getElementById("price").textContent = "—";
+      document.getElementById("sub").innerHTML =
+        '<span class="err">Couldn\'t load from RPC (rate limited?). Retrying…</span>';
+    }
+  }
+
+  load();
+  setInterval(load, 30000);
+</script>
+</body>
+</html>
