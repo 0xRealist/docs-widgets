@@ -9,14 +9,14 @@
     --fg: #11151c; --muted: rgba(17,21,28,0.55);
     --panel: rgba(138,160,200,0.07); --panel2: rgba(138,160,200,0.10);
     --border: rgba(138,160,200,0.22); --accent: #5b6f94; --good: #2fae74; --err: #c0392b;
-    --gold: #c9a24a;
+    --gold: #c9a24a; --tipbg: #ffffff;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --fg: #e9eef6; --muted: rgba(233,238,246,0.55);
       --panel: rgba(138,160,200,0.06); --panel2: rgba(138,160,200,0.10);
       --border: rgba(138,160,200,0.18); --accent: #aebfdb; --good: #41c98a; --err: #e06b6b;
-      --gold: #e3c27a;
+      --gold: #e3c27a; --tipbg: #1b212c;
     }
   }
   * { box-sizing: border-box; }
@@ -34,8 +34,15 @@
   .logo-sm { width: 20px; height: 20px; border-radius: 50%; }
   .usd { font-size: 13px; color: var(--muted); margin-top: 4px; }
   .pill { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--panel2); color: var(--accent); white-space: nowrap; }
-  .chart { margin: 0.7rem 0 0.2rem; }
+  .chart { margin: 0.7rem 0 0.2rem; position: relative; }
   svg { display: block; width: 100%; height: 92px; overflow: visible; }
+  .tip { position: absolute; transform: translate(-50%, calc(-100% - 10px)); background: var(--tipbg);
+    border: 1px solid var(--border); border-radius: 8px; padding: 4px 9px; font-size: 11px;
+    white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .08s;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.28); z-index: 5; }
+  .tip .tv { font-weight: 700; }
+  .tip .td { color: var(--muted); font-size: 10px; }
+  #hd { stroke: var(--tipbg); stroke-width: 1.5; }
   .range { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); margin-top: 2px; }
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-top: 1rem; }
   .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 0.7rem 0.8rem; }
@@ -76,6 +83,7 @@
 
     <div class="chart">
       <svg id="chart" viewBox="0 0 600 92" preserveAspectRatio="none" role="img" aria-label="stRWT rate history"></svg>
+      <div id="tip" class="tip"></div>
       <div class="range"><span id="r0">—</span><span id="r1">—</span></div>
     </div>
 
@@ -120,6 +128,7 @@
     throw lastErr || new Error("all RPCs failed");
   }
 
+  let CHART = null;
   function drawChart(series) {
     const svg = $("chart"), W = 600, H = 92, pad = 6;
     if (!series || !series.length) { svg.innerHTML = ""; return; }
@@ -141,8 +150,43 @@
       '<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8aa0c8" stop-opacity="0.35"/><stop offset="100%" stop-color="#8aa0c8" stop-opacity="0"/></linearGradient></defs>' +
       '<path d="' + area + '" fill="url(#g)"/>' +
       '<path d="' + line + '" fill="none" stroke="#8aa0c8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
-      dots;
+      dots +
+      '<line id="hl" x1="0" y1="' + pad + '" x2="0" y2="' + (H - pad) + '" stroke="#8aa0c8" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>' +
+      '<circle id="hd" r="4.5" fill="#8aa0c8" opacity="0"/>';
     $("r0").textContent = series[0].t; $("r1").textContent = series[n - 1].t;
+    CHART = { series, W, H, pad, n, x, y };
+  }
+
+  function setupHover() {
+    const svg = $("chart"), tip = $("tip");
+    const move = (clientX) => {
+      if (!CHART) return;
+      const { series, W, H, pad, n, x, y } = CHART;
+      const rect = svg.getBoundingClientRect();
+      const frac = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+      const step = (W - 2 * pad) / Math.max(1, n - 1);
+      let idx = Math.round((frac * W - pad) / step);
+      idx = Math.min(n - 1, Math.max(0, idx));
+      const p = series[idx], px = x(idx), py = y(p.rate);
+      const hl = svg.querySelector("#hl"), hd = svg.querySelector("#hd");
+      if (hl) { hl.setAttribute("x1", px); hl.setAttribute("x2", px); hl.setAttribute("opacity", "0.5"); }
+      if (hd) { hd.setAttribute("cx", px); hd.setAttribute("cy", py); hd.setAttribute("opacity", "1"); }
+      tip.style.left = (px / W) * rect.width + "px";
+      tip.style.top = (py / H) * rect.height + "px";
+      tip.innerHTML = '<div class="tv">' + fmt(p.rate, 4) + ' RWT</div><div class="td">' + p.t + '</div>';
+      tip.style.opacity = "1";
+    };
+    const hide = () => {
+      const hl = svg.querySelector("#hl"), hd = svg.querySelector("#hd");
+      if (hl) hl.setAttribute("opacity", "0");
+      if (hd) hd.setAttribute("opacity", "0");
+      tip.style.opacity = "0";
+    };
+    svg.addEventListener("mousemove", (e) => move(e.clientX));
+    svg.addEventListener("mouseleave", hide);
+    svg.addEventListener("touchstart", (e) => move(e.touches[0].clientX), { passive: true });
+    svg.addEventListener("touchmove", (e) => move(e.touches[0].clientX), { passive: true });
+    svg.addEventListener("touchend", hide);
   }
 
   async function loadLive() {
@@ -192,6 +236,7 @@
     } catch (e) { $("holders").textContent = "—"; }
   }
 
+  setupHover();
   loadLive(); loadHistory();
   setInterval(loadLive, 30000);
 </script>
