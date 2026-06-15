@@ -37,10 +37,16 @@
     -webkit-font-smoothing: antialiased;
   }
   .card {
+    position: relative;
     border: 1px solid var(--border);
     border-radius: 16px;
     padding: 1.25rem 1.4rem 1.1rem;
     background: var(--panel);
+  }
+  .live-dot {
+    position: absolute; top: 13px; left: 13px;
+    width: 8px; height: 8px; border-radius: 50%; background: var(--good);
+    box-shadow: 0 0 0 0 rgba(65, 201, 138, 0.55); animation: pulse 2s infinite;
   }
   .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
   .id { display: flex; align-items: center; gap: 0.7rem; }
@@ -85,11 +91,12 @@
 </head>
 <body>
   <div class="card">
+    <span class="live-dot"></span>
     <div class="top">
       <div class="id">
         <img class="logo" src="./rwt.png" alt="RWT" width="42" height="42" />
         <div>
-          <div class="label"><span class="dot"></span> Book NAV Price · live</div>
+          <div class="label">RWT Book NAV Price</div>
           <div id="price" class="price skel">$—</div>
         </div>
       </div>
@@ -172,9 +179,10 @@
       const price = supply === 0n ? 1 : Number((capital * SCALE) / supply) / 1e6;
       $("price").classList.remove("skel"); $("tvl").classList.remove("skel"); $("supply").classList.remove("skel");
       $("price").textContent = "$" + fmt(price, 6);
-      $("tvl").textContent = "$" + compact(Number(capital) / 1e6);
-      $("supply").textContent = compact(Number(supply) / 1e6) + " RWT";
-      $("status").textContent = "Live · refreshes every 30s";
+      $("tvl").textContent = "$" + fmt(Number(capital) / 1e6, 2);
+      $("supply").textContent = (Number(supply) / 1e6).toLocaleString("en-US", { maximumFractionDigits: 2 });
+      const u = new Date().toISOString().slice(11, 19);
+      $("status").textContent = "Updated " + u + " UTC · every 30s";
       $("status").classList.remove("err");
     } catch (e) {
       $("status").textContent = "RPC unavailable, retrying…";
