@@ -141,11 +141,7 @@
     let line = "";
     series.forEach((p, i) => { line += (i === 0 ? "M" : "L") + x(i).toFixed(2) + " " + y(p.rate).toFixed(2) + " "; });
     const area = line + "L" + x(n - 1).toFixed(2) + " " + (H - pad) + " L" + x(0).toFixed(2) + " " + (H - pad) + " Z";
-    let dots = "";
-    series.forEach((p, i) => {
-      const r = i === n - 1 ? 4 : 2.6;
-      dots += '<circle cx="' + x(i).toFixed(2) + '" cy="' + y(p.rate).toFixed(2) + '" r="' + r + '" fill="#8aa0c8"/>';
-    });
+    const dots = '<circle cx="' + x(n - 1).toFixed(2) + '" cy="' + y(series[n - 1].rate).toFixed(2) + '" r="4" fill="#8aa0c8"/>';
     svg.innerHTML =
       '<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8aa0c8" stop-opacity="0.35"/><stop offset="100%" stop-color="#8aa0c8" stop-opacity="0"/></linearGradient></defs>' +
       '<path d="' + area + '" fill="url(#g)"/>' +
@@ -176,7 +172,7 @@
       tip.style.opacity = "1";
       const half = tip.offsetWidth / 2;
       let lx = (px / W) * rect.width;
-      lx = Math.min(rect.width - half - 2, Math.max(half + 2, lx));
+      lx = Math.min(rect.width - half - 6, Math.max(half + 6, lx));
       tip.style.left = lx + "px";
     };
     const hide = () => {
