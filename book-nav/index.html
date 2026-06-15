@@ -115,7 +115,13 @@
   </div>
 
 <script>
-  const RPC = "https://solana-rpc.publicnode.com"; // CORS-enabled; swap for a dedicated endpoint in production
+  // CORS-enabled public RPCs, tried in order with automatic failover.
+  // For production reliability add a dedicated endpoint (Helius / Triton) at the front.
+  const RPCS = [
+    "https://solana-rpc.publicnode.com",
+    "https://api.mainnet-beta.solana.com",
+  ];
+  let rpcIdx = 0;
   const CONFIG = "5GyVeryGnTPPtfteYaj5pNUjE9s2DDDpDnccgoFjV8L3"; // EarnConfig PDA (Book NAV numerator)
   const MINT = "RWTeFt9M635Tf6w6yveAoXQR2ZwfXs7MfA7W3grDuGT";    // RWT mint
   const SCALE = 1000000n;
@@ -125,11 +131,22 @@
   const compact = (n) => n >= 1000 ? n.toLocaleString("en-US", { notation: "compact", maximumFractionDigits: 2 }) : fmt(n, 0);
 
   async function rpc(method, params) {
-    const r = await fetch(RPC, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-    });
-    return r.json();
+    let lastErr;
+    for (let k = 0; k < RPCS.length; k++) {
+      const i = (rpcIdx + k) % RPCS.length;
+      try {
+        const r = await fetch(RPCS[i], {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+        });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        const j = await r.json();
+        if (j.error) throw new Error(j.error.message || "rpc error");
+        rpcIdx = i; // stick to the endpoint that worked
+        return j;
+      } catch (e) { lastErr = e; }
+    }
+    throw lastErr || new Error("all RPCs failed");
   }
 
   function drawChart(series) {
