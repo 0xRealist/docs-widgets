@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RWT Liquidity</title>
+<style>
+  @font-face { font-family: "Halvar Breit"; src: url("../fonts/HalvarBreit-Rg.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+  @font-face { font-family: "Halvar Breit"; src: url("../fonts/HalvarBreit-Bd.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+  :root {
+    --fg: #11151c; --muted: rgba(17,21,28,0.55);
+    --panel: rgba(138,160,200,0.07); --panel2: rgba(138,160,200,0.10);
+    --border: rgba(138,160,200,0.22); --accent: #5b6f94; --good: #2fae74; --err: #c0392b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fg: #e9eef6; --muted: rgba(233,238,246,0.55);
+      --panel: rgba(138,160,200,0.06); --panel2: rgba(138,160,200,0.10);
+      --border: rgba(138,160,200,0.18); --accent: #aebfdb; --good: #41c98a; --err: #e06b6b;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: transparent; }
+  body { font-family: "Halvar Breit", Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; color: var(--fg); -webkit-font-smoothing: antialiased; }
+  .card { border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem 1.4rem 1.1rem; background: var(--panel); }
+  .hd { display: flex; align-items: center; gap: 8px; margin-bottom: 0.8rem; }
+  .hd-title { font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+  .live { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); display: inline-block; box-shadow: 0 0 0 0 rgba(65,201,138,0.55); animation: pulse 2s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(65,201,138,0.5);} 70% { box-shadow: 0 0 0 6px rgba(65,201,138,0);} 100% { box-shadow: 0 0 0 0 rgba(65,201,138,0);} }
+  .sub { font-size: 10px; color: var(--muted); letter-spacing: 0.04em; }
+  .tvl { font-size: 34px; font-weight: 750; line-height: 1.05; letter-spacing: -0.02em; margin-top: 2px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin: 1rem 0 1.1rem; }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 0.65rem 0.8rem; }
+  .stat .k { font-size: 9.5px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+  .stat .v { font-size: 16px; font-weight: 700; margin-top: 3px; }
+  .pools-h { font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
+  .pool { display: flex; align-items: center; gap: 0.7rem; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 0.6rem 0.8rem; margin-bottom: 0.5rem; }
+  .pool img { width: 26px; height: 26px; border-radius: 50%; flex: 0 0 auto; }
+  .pool .pn { font-size: 13px; font-weight: 700; }
+  .pool .pm { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+  .pool .pr { margin-left: auto; text-align: right; }
+  .pool .pv { font-size: 14px; font-weight: 700; }
+  .pool .pl { font-size: 10.5px; color: var(--accent); text-decoration: none; }
+  .pool .pl:hover { text-decoration: underline; }
+  .foot { margin-top: 0.85rem; font-size: 10.5px; color: var(--muted); display: flex; justify-content: space-between; gap: 1rem; }
+  .err { color: var(--err); } .skel { color: var(--muted); }
+  @media (max-width: 480px) {
+    .card { padding: 1rem 1rem 0.9rem; border-radius: 14px; }
+    .tvl { font-size: 28px; } .stats { gap: 0.45rem; } .stat { padding: 0.55rem 0.6rem; }
+    .stat .k { font-size: 9px; } .stat .v { font-size: 14px; }
+    .foot { font-size: 9.5px; flex-direction: column; gap: 0.3rem; }
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="hd">
+      <span class="hd-title">RWT Liquidity</span>
+      <span class="live"><span class="dot"></span> live</span>
+    </div>
+    <div class="sub">Total liquidity (TVL)</div>
+    <div id="tvl" class="tvl skel">$—</div>
+
+    <div class="stats">
+      <div class="stat"><div class="k">RWT in pools</div><div id="rwt" class="v skel">—</div></div>
+      <div class="stat"><div class="k">USDC in pools</div><div id="usdc" class="v skel">—</div></div>
+      <div class="stat"><div class="k">Avg price (vol)</div><div id="avg" class="v skel">—</div></div>
+    </div>
+
+    <div class="pools-h">Liquidity pools</div>
+    <div id="pools"><div class="sub skel">Loading pools…</div></div>
+
+    <div class="foot">
+      <span id="status">Loading…</span>
+      <span>source: DexScreener</span>
+    </div>
+  </div>
+
+<script>
+  const MINT = "RWTeFt9M635Tf6w6yveAoXQR2ZwfXs7MfA7W3grDuGT"; // RWT mint
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n, d) => n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const grp = (n) => n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  const usd = (n) => "$" + (n >= 1000 ? n.toLocaleString("en-US", { maximumFractionDigits: 0 }) : fmt(n, 2));
+  const dexLogo = (id) => "https://dd.dexscreener.com/ds-data/dexes/" + id + ".png";
+
+  async function load() {
+    try {
+      const r = await fetch("https://api.dexscreener.com/latest/dex/tokens/" + MINT, { cache: "no-store" });
+      const data = await r.json();
+      const pairs = (data.pairs || []).filter((p) => p.chainId === "solana" && (p.liquidity || {}).usd);
+
+      let tvl = 0, rwt = 0, usdc = 0, volSum = 0, pxVol = 0;
+      pairs.forEach((p) => {
+        const isBase = p.baseToken.address === MINT;
+        const rwtAmt = Number((isBase ? p.liquidity.base : p.liquidity.quote) || 0);
+        const otherAmt = Number((isBase ? p.liquidity.quote : p.liquidity.base) || 0);
+        const px = Number(p.priceUsd || 0);
+        const v = Number((p.volume || {}).h24 || 0);
+        tvl += Number(p.liquidity.usd || 0);
+        rwt += rwtAmt;
+        usdc += otherAmt; // quote is USDC for these pools
+        volSum += v; pxVol += px * v;
+      });
+      const avg = volSum > 0 ? pxVol / volSum : (pairs.length ? Number(pairs[0].priceUsd || 0) : 0);
+
+      ["tvl", "rwt", "usdc", "avg"].forEach((id) => $(id).classList.remove("skel"));
+      $("tvl").textContent = usd(tvl);
+      $("rwt").textContent = grp(rwt) + " RWT";
+      $("usdc").textContent = grp(usdc) + " USDC";
+      $("avg").textContent = "$" + fmt(avg, 4);
+
+      pairs.sort((a, b) => (b.liquidity.usd || 0) - (a.liquidity.usd || 0));
+      $("pools").innerHTML = pairs.map((p) => {
+        const label = (p.labels && p.labels.length) ? " " + p.labels.join("/") : "";
+        const name = p.baseToken.symbol + " / " + p.quoteToken.symbol;
+        const dex = (p.dexId || "dex").charAt(0).toUpperCase() + (p.dexId || "dex").slice(1);
+        const link = p.dexId === "meteora"
+          ? "https://app.meteora.ag/dlmm/" + p.pairAddress
+          : (p.url || "#");
+        return '<div class="pool">' +
+          '<img src="' + dexLogo(p.dexId) + '" alt="" onerror="this.style.display=\'none\'" />' +
+          '<div><div class="pn">' + dex + label + '</div><div class="pm">' + name + '</div></div>' +
+          '<div class="pr"><div class="pv">' + usd(p.liquidity.usd || 0) + '</div>' +
+          '<a class="pl" href="' + link + '" target="_blank" rel="noreferrer">open ↗</a></div>' +
+          '</div>';
+      }).join("") || '<div class="sub">No pools found.</div>';
+
+      $("status").textContent = "Updated " + new Date().toISOString().slice(11, 19) + " UTC · every 60s";
+      $("status").classList.remove("err");
+    } catch (e) {
+      $("status").textContent = "Couldn’t load liquidity, retrying…";
+      $("status").classList.add("err");
+    }
+  }
+
+  load();
+  setInterval(load, 60000);
+</script>
+</body>
+</html>
