@@ -1,16 +1,6 @@
 {
-  "note": "Daily stRWT exchange-rate snapshots. Appended by .github/workflows/snapshot.yml. rate = RWT per stRWT.",
+  "note": "Daily stRWT exchange-rate snapshots. Appended by .github/workflows/snapshot.yml. rate = RWT per stRWT. Baseline starts at the first real staking rate (10.099), not the empty-pool bootstrap (10.0).",
   "points": [
-    {
-      "t": "2026-06-12",
-      "rate": 10
-    },
-    {
-      "t": "2026-06-15",
-      "rate": 10.09901,
-      "staked": 1010,
-      "price": 10.099,
-      "holders": 1
-    }
+    { "t": "2026-06-15", "rate": 10.09901, "staked": 1010, "price": 10.099, "holders": 1 }
   ]
 }
