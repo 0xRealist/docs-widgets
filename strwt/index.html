@@ -193,7 +193,8 @@
   let baseRate = null, curRate = null;
   function updatePill() {
     if (baseRate == null || curRate == null) return;
-    const g = (curRate / baseRate - 1) * 100;
+    let g = (curRate / baseRate - 1) * 100;
+    if (Math.abs(g) < 0.005) g = 0; // avoid "-0.00%" from rounding noise
     $("pill").textContent = (g >= 0 ? "+" : "") + g.toFixed(2) + "% all time";
   }
 
