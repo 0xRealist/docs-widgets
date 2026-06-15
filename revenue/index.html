@@ -19,7 +19,7 @@
   .card { border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem 1.4rem 1.15rem; background: var(--panel); }
   .hd { display: flex; align-items: center; gap: 8px; margin-bottom: 0.9rem; }
   .hd-title { font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
-  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-bottom: 1.2rem; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem; margin-bottom: 1.2rem; }
   .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 0.7rem 0.85rem; }
   .stat .k { font-size: 9.5px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
   .stat .v { font-size: 19px; font-weight: 700; margin-top: 4px; }
@@ -36,7 +36,7 @@
   .skel { color: var(--muted); }
   @media (max-width: 480px) {
     .card { padding: 1rem 1rem 0.9rem; border-radius: 14px; }
-    .stats { gap: 0.45rem; } .stat { padding: 0.55rem 0.6rem; } .stat .k { font-size: 9px; } .stat .v { font-size: 16px; }
+    .stats { grid-template-columns: repeat(2, 1fr); gap: 0.45rem; } .stat { padding: 0.55rem 0.6rem; } .stat .k { font-size: 9px; } .stat .v { font-size: 16px; }
   }
 </style>
 </head>
@@ -47,6 +47,7 @@
     <div class="stats">
       <div class="stat"><div class="k">Assets</div><div id="count" class="v skel">—</div></div>
       <div class="stat"><div class="k">Total value</div><div id="total" class="v skel">—</div></div>
+      <div class="stat"><div class="k">Cash</div><div id="cash" class="v skel">—</div></div>
       <div class="stat"><div class="k">Yield generated</div><div id="yield" class="v skel">—</div></div>
     </div>
 
@@ -57,8 +58,28 @@
   </div>
 
 <script>
+  const RPCS = ["https://solana-rpc.publicnode.com", "https://api.mainnet-beta.solana.com"];
+  let rpcIdx = 0;
+  const EARN = "5GyVeryGnTPPtfteYaj5pNUjE9s2DDDpDnccgoFjV8L3"; // EarnConfig PDA (RWA basket value)
+
   const $ = (id) => document.getElementById(id);
   const usd = (n) => "$" + n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+
+  async function rpc(method, params) {
+    let lastErr;
+    for (let k = 0; k < RPCS.length; k++) {
+      const i = (rpcIdx + k) % RPCS.length;
+      try {
+        const r = await fetch(RPCS[i], { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        const j = await r.json();
+        if (j.error) throw new Error(j.error.message || "rpc error");
+        rpcIdx = i; return j;
+      } catch (e) { lastErr = e; }
+    }
+    throw lastErr || new Error("all RPCs failed");
+  }
 
   async function load() {
     try {
@@ -71,6 +92,19 @@
       $("count").textContent = assets.length;
       $("total").textContent = usd(totalValue);
       $("yield").textContent = usd(totalYield);
+
+      // Cash = on-chain basket value minus the sum of deployed RWA asset values
+      try {
+        const earn = await rpc("getAccountInfo", [EARN, { encoding: "base64" }]);
+        const bin = atob(earn.result.value.data[0]);
+        let capital = 0n;
+        for (let i = 0; i < 16; i++) capital += BigInt(bin.charCodeAt(8 + i)) << (8n * BigInt(i));
+        const basketValue = Number(capital) / 1e6;
+        $("cash").classList.remove("skel");
+        $("cash").textContent = usd(Math.max(0, basketValue - totalValue));
+      } catch (e) {
+        $("cash").textContent = "—";
+      }
 
       assets.sort((a, b) => (b.yield || 0) - (a.yield || 0) || (b.value || 0) - (a.value || 0));
       $("rows").innerHTML = assets.map((a) => {
