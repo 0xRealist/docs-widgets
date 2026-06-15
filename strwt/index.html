@@ -81,7 +81,7 @@
 
     <div class="stats">
       <div class="stat"><div class="k">Staked RWT</div><div id="staked" class="v skel">—</div><div id="stakedpct" class="s"></div></div>
-      <div class="stat"><div class="k">stRWT Price</div><div id="stprice" class="v skel">—</div></div>
+      <div class="stat"><div class="k">stRWT Supply</div><div id="stsupply" class="v skel">—</div></div>
       <div class="stat"><div class="k">Holders</div><div id="holders" class="v skel">—</div></div>
     </div>
 
@@ -165,12 +165,12 @@
       const growth = (rate / 10 - 1) * 100;                           // vs bootstrap rate (10)
 
       $("rate").classList.remove("skel"); $("usd").classList.remove("skel");
-      $("staked").classList.remove("skel"); $("stprice").classList.remove("skel");
-      $("rate").innerHTML = '<span>' + fmt(rate, 4) + '</span><span class="unit"><img class="logo-sm" src="./rwt.png" alt="">RWT</span>';
+      $("staked").classList.remove("skel"); $("stsupply").classList.remove("skel");
+      $("rate").innerHTML = '<span>' + fmt(rate, 4) + '</span><span class="unit">RWT</span>';
       $("usd").textContent = "1 stRWT ≈ $" + fmt(price, 2);
       $("staked").textContent = grp(poolRaw / 1e6);
       $("stakedpct").textContent = (100 * poolRaw / rwtSupply).toFixed(2) + "% of " + grp(rwtSupply / 1e6) + " supply";
-      $("stprice").textContent = "$" + fmt(price, 2);
+      $("stsupply").textContent = grp(strwtSupply / 1e6);
       const sign = growth >= 0 ? "+" : "";
       $("pill").textContent = sign + growth.toFixed(2) + "% all time";
       $("status").textContent = "Updated " + new Date().toISOString().slice(11, 19) + " UTC · every 30s";
