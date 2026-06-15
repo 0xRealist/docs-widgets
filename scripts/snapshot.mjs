@@ -11,6 +11,12 @@ const POOL = "WtXa3NyQaiYdD6hJrDGkHcYyMKv722LqmPXij8hh2BT"; // staking pool RWT 
 const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const VA = 10000000, VS = 1000000; // virtual assets/shares (bootstrap rate = 10)
 
+// Protocol-owned token accounts to exclude from holder counts (not real holders).
+const EXCLUDE = new Set([
+  "EYpKtcY5xkA8aQQTKYyEpFdRua5GM47YVWVfG9scn4Hd", // Omnipair market (pool reserves)
+  "EwXST2yoQRBf3FEYe6fyoseatHaVypYck3ZQ5bEGzEUe", // staking pool (StakingConfig PDA)
+]);
+
 const BOOK = new URL("../book-nav/history.json", import.meta.url);
 const STK = new URL("../strwt/history.json", import.meta.url);
 
@@ -25,13 +31,19 @@ async function rpc(method, params) {
   return j.result;
 }
 
-async function holderCount(mint) {
+// Unique owner addresses holding the mint (balance > 0), excluding protocol pools.
+async function owners(mint) {
   try {
     const accs = await rpc("getProgramAccounts", [
       TOKEN_PROGRAM,
       { encoding: "jsonParsed", filters: [{ dataSize: 165 }, { memcmp: { offset: 0, bytes: mint } }] },
     ]);
-    return accs.filter((a) => Number(a.account.data.parsed.info.tokenAmount.amount) > 0).length;
+    const set = new Set();
+    for (const a of accs) {
+      const info = a.account.data.parsed.info;
+      if (Number(info.tokenAmount.amount) > 0 && !EXCLUDE.has(info.owner)) set.add(info.owner);
+    }
+    return set;
   } catch (e) {
     console.warn("holders lookup failed for", mint, e.message);
     return null;
@@ -58,7 +70,10 @@ async function main() {
   for (let i = 0; i < 16; i++) capital += BigInt(bin[8 + i]) << (8n * BigInt(i));
   const rwtSup = BigInt((await rpc("getTokenSupply", [RWT])).value.amount);
   const nav = rwtSup === 0n ? 1 : Number((capital * 1000000n) / rwtSup) / 1e6;
-  const rwtHolders = await holderCount(RWT);
+  // Holder sets (unique owners, protocol pools excluded)
+  const rwtOwners = await owners(RWT);
+  const stOwners = await owners(STRWT);
+  const uniqueHolders = rwtOwners && stOwners ? new Set([...rwtOwners, ...stOwners]).size : null;
 
   const bookPoint = {
     t,
@@ -66,7 +81,8 @@ async function main() {
     capital: Math.round(Number(capital) / 1e6),
     supply: Math.round(Number(rwtSup) / 1e6),
   };
-  if (rwtHolders !== null) bookPoint.holders = rwtHolders;
+  if (rwtOwners) bookPoint.holders = rwtOwners.size;
+  if (uniqueHolders !== null) bookPoint.holders_unique = uniqueHolders;
   appendPoint(BOOK, bookPoint);
 
   // ---- stRWT exchange rate ----
@@ -75,15 +91,13 @@ async function main() {
   const poolRaw = Number(poolAcc.value.data.parsed.info.tokenAmount.amount);
   const rate = (poolRaw + VA) / (strwtSupply + VS); // RWT per stRWT
   const price = rate * nav; // USD per stRWT
-  const strwtHolders = await holderCount(STRWT);
-
   const stPoint = {
     t,
     rate: Number(rate.toFixed(6)),
     staked: Math.round(poolRaw / 1e6),
     price: Number(price.toFixed(4)),
   };
-  if (strwtHolders !== null) stPoint.holders = strwtHolders;
+  if (stOwners) stPoint.holders = stOwners.size;
   appendPoint(STK, stPoint);
 }
 
