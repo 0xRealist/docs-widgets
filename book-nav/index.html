@@ -7,113 +7,189 @@
 <style>
   :root {
     --fg: #11151c;
-    --muted: rgba(17, 21, 28, 0.6);
-    --panel: rgba(138, 160, 200, 0.08);
-    --border: rgba(138, 160, 200, 0.28);
+    --muted: rgba(17, 21, 28, 0.55);
+    --panel: rgba(138, 160, 200, 0.07);
+    --panel2: rgba(138, 160, 200, 0.10);
+    --border: rgba(138, 160, 200, 0.22);
     --accent: #5b6f94;
+    --accent2: #8aa0c8;
+    --good: #2fae74;
     --err: #c0392b;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --fg: #e9eef6;
-      --muted: rgba(233, 238, 246, 0.6);
-      --panel: rgba(138, 160, 200, 0.07);
-      --border: rgba(138, 160, 200, 0.25);
+      --muted: rgba(233, 238, 246, 0.55);
+      --panel: rgba(138, 160, 200, 0.06);
+      --panel2: rgba(138, 160, 200, 0.10);
+      --border: rgba(138, 160, 200, 0.18);
       --accent: #aebfdb;
+      --accent2: #8aa0c8;
+      --good: #41c98a;
       --err: #e06b6b;
     }
   }
+  * { box-sizing: border-box; }
   html, body { margin: 0; background: transparent; }
   body {
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
     color: var(--fg);
+    -webkit-font-smoothing: antialiased;
   }
   .card {
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 1rem 1.25rem;
+    border-radius: 16px;
+    padding: 1.25rem 1.4rem 1.1rem;
     background: var(--panel);
   }
+  .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
   .label {
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 0.35rem;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 0.35rem; display: flex; align-items: center; gap: 6px;
   }
   .dot {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: #41c98a; display: inline-block;
-    box-shadow: 0 0 0 0 rgba(65, 201, 138, 0.6);
-    animation: pulse 2s infinite;
+    width: 7px; height: 7px; border-radius: 50%; background: var(--good); display: inline-block;
+    box-shadow: 0 0 0 0 rgba(65, 201, 138, 0.55); animation: pulse 2s infinite;
   }
   @keyframes pulse {
     0% { box-shadow: 0 0 0 0 rgba(65, 201, 138, 0.5); }
     70% { box-shadow: 0 0 0 6px rgba(65, 201, 138, 0); }
     100% { box-shadow: 0 0 0 0 rgba(65, 201, 138, 0); }
   }
-  .price { font-size: 32px; font-weight: 700; line-height: 1.1; }
-  .sub { font-size: 13px; color: var(--muted); margin-top: 0.4rem; }
-  .sub a { color: var(--accent); text-decoration: none; }
-  .sub a:hover { text-decoration: underline; }
-  .err { font-size: 13px; color: var(--err); }
+  .price { font-size: 38px; font-weight: 750; line-height: 1.05; letter-spacing: -0.02em; }
+  .pill {
+    font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+    background: var(--panel2); color: var(--accent); white-space: nowrap;
+  }
+  .chart { margin: 0.7rem 0 0.2rem; }
+  svg { display: block; width: 100%; height: 96px; overflow: visible; }
+  .range { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+  .stats {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-top: 1rem;
+  }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 0.7rem 0.8rem; }
+  .stat .k { font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+  .stat .v { font-size: 17px; font-weight: 650; margin-top: 3px; }
+  .foot { margin-top: 0.85rem; font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; gap: 1rem; }
+  .foot a { color: var(--accent); text-decoration: none; }
+  .foot a:hover { text-decoration: underline; }
+  .err { color: var(--err); }
+  .skel { color: var(--muted); }
 </style>
 </head>
 <body>
   <div class="card">
-    <div class="label"><span class="dot"></span> Book NAV Price · live from chain</div>
-    <div id="price" class="price">…</div>
-    <div id="sub" class="sub"></div>
+    <div class="top">
+      <div>
+        <div class="label"><span class="dot"></span> Book NAV Price · live</div>
+        <div id="price" class="price skel">$—</div>
+      </div>
+      <div id="pill" class="pill">since launch</div>
+    </div>
+
+    <div class="chart">
+      <svg id="chart" viewBox="0 0 600 96" preserveAspectRatio="none" role="img" aria-label="Book NAV history"></svg>
+      <div class="range"><span id="r0">—</span><span id="r1">—</span></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="k">Invested capital</div><div id="tvl" class="v skel">—</div></div>
+      <div class="stat"><div class="k">Supply</div><div id="supply" class="v skel">—</div></div>
+      <div class="stat"><div class="k">Holders</div><div id="holders" class="v skel">—</div></div>
+    </div>
+
+    <div class="foot">
+      <span id="status">Loading…</span>
+      <a href="https://solscan.io/token/RWTeFt9M635Tf6w6yveAoXQR2ZwfXs7MfA7W3grDuGT" target="_blank" rel="noreferrer">verify on-chain ↗</a>
+    </div>
   </div>
 
 <script>
-  // Public CORS-enabled RPC (api.mainnet-beta blocks browser requests).
-  // Swap for a dedicated endpoint (Helius / Triton / QuickNode) for production reliability.
-  const RPC = "https://solana-rpc.publicnode.com";
+  const RPC = "https://solana-rpc.publicnode.com"; // CORS-enabled; swap for a dedicated endpoint in production
   const CONFIG = "5GyVeryGnTPPtfteYaj5pNUjE9s2DDDpDnccgoFjV8L3"; // EarnConfig PDA (Book NAV numerator)
   const MINT = "RWTeFt9M635Tf6w6yveAoXQR2ZwfXs7MfA7W3grDuGT";    // RWT mint
-  const SCALE = 1000000n; // NAV_SCALE = 1e6 (USDC 6 decimals)
+  const SCALE = 1000000n;
 
+  const $ = (id) => document.getElementById(id);
   const fmt = (n, d) => n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const compact = (n) => n >= 1000 ? n.toLocaleString("en-US", { notation: "compact", maximumFractionDigits: 2 }) : fmt(n, 0);
 
   async function rpc(method, params) {
     const r = await fetch(RPC, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
     });
     return r.json();
   }
 
-  async function load() {
+  function drawChart(series) {
+    const svg = $("chart");
+    const W = 600, H = 96, pad = 6;
+    if (!series || series.length === 0) { svg.innerHTML = ""; return; }
+    const vals = series.map((p) => p.nav);
+    let min = Math.min(...vals), max = Math.max(...vals);
+    if (max - min < 1e-9) { const c = min || 1; min = c * 0.999; max = c * 1.001; } // flat -> tiny band
+    const n = series.length;
+    const x = (i) => pad + (i * (W - 2 * pad)) / Math.max(1, n - 1);
+    const y = (v) => H - pad - ((v - min) / (max - min)) * (H - 2 * pad);
+    let line = "", area = "";
+    series.forEach((p, i) => {
+      const px = x(i).toFixed(2), py = y(p.nav).toFixed(2);
+      line += (i === 0 ? "M" : "L") + px + " " + py + " ";
+    });
+    area = line + "L" + x(n - 1).toFixed(2) + " " + (H - pad) + " L" + x(0).toFixed(2) + " " + (H - pad) + " Z";
+    const lastX = x(n - 1).toFixed(2), lastY = y(series[n - 1].nav).toFixed(2);
+    svg.innerHTML =
+      '<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0%" stop-color="#8aa0c8" stop-opacity="0.35"/>' +
+      '<stop offset="100%" stop-color="#8aa0c8" stop-opacity="0"/></linearGradient></defs>' +
+      '<path d="' + area + '" fill="url(#g)"/>' +
+      '<path d="' + line + '" fill="none" stroke="#8aa0c8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+      '<circle cx="' + lastX + '" cy="' + lastY + '" r="3.2" fill="#8aa0c8"/>';
+    const d0 = series[0].t, d1 = series[n - 1].t;
+    $("r0").textContent = d0; $("r1").textContent = d1;
+  }
+
+  async function loadLive() {
     try {
       const [acc, sup] = await Promise.all([
         rpc("getAccountInfo", [CONFIG, { encoding: "base64" }]),
         rpc("getTokenSupply", [MINT]),
       ]);
       const bin = atob(acc.result.value.data[0]);
-      let capital = 0n; // total_invested_capital: u128 LE at offset 8
+      let capital = 0n;
       for (let i = 0; i < 16; i++) capital += BigInt(bin.charCodeAt(8 + i)) << (8n * BigInt(i));
       const supply = BigInt(sup.result.value.amount);
-      const navMicro = supply === 0n ? SCALE : (capital * SCALE) / supply;
-      const price = Number(navMicro) / 1e6;
-      document.getElementById("price").textContent = "$" + fmt(price, 6);
-      document.getElementById("sub").innerHTML =
-        "Invested capital $" + fmt(Number(capital) / 1e6, 2) +
-        " · Supply " + fmt(Number(supply) / 1e6, 2) + " RWT · " +
-        '<a href="https://solscan.io/token/' + MINT + '" target="_blank" rel="noreferrer">verify on-chain ↗</a>';
+      const price = supply === 0n ? 1 : Number((capital * SCALE) / supply) / 1e6;
+      $("price").classList.remove("skel"); $("tvl").classList.remove("skel"); $("supply").classList.remove("skel");
+      $("price").textContent = "$" + fmt(price, 6);
+      $("tvl").textContent = "$" + compact(Number(capital) / 1e6);
+      $("supply").textContent = compact(Number(supply) / 1e6) + " RWT";
+      $("status").textContent = "Live · refreshes every 30s";
+      $("status").classList.remove("err");
     } catch (e) {
-      document.getElementById("price").textContent = "—";
-      document.getElementById("sub").innerHTML =
-        '<span class="err">Couldn\'t load from RPC (rate limited?). Retrying…</span>';
+      $("status").textContent = "RPC unavailable, retrying…";
+      $("status").classList.add("err");
     }
   }
 
-  load();
-  setInterval(load, 30000);
+  async function loadHistory() {
+    try {
+      const h = await fetch("./history.json", { cache: "no-store" }).then((r) => r.json());
+      const series = (h.points || h || []).filter((p) => typeof p.nav === "number");
+      drawChart(series);
+      const last = series[series.length - 1] || {};
+      if (typeof last.holders === "number") {
+        $("holders").classList.remove("skel");
+        $("holders").textContent = compact(last.holders);
+      } else { $("holders").textContent = "—"; }
+    } catch (e) {
+      $("holders").textContent = "—";
+    }
+  }
+
+  loadLive(); loadHistory();
+  setInterval(loadLive, 30000);
 </script>
 </body>
 </html>
