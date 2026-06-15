@@ -43,6 +43,8 @@
   .stat .k { font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
   .stat .v { font-size: 16px; font-weight: 650; margin-top: 3px; }
   .stat .s { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .stat .duo { font-size: 14px; font-weight: 600; }
+  .stat .k + .duo { margin-top: 3px; }
   .foot { margin-top: 0.85rem; font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; gap: 1rem; }
   .foot a { color: var(--accent); text-decoration: none; }
   .foot a:hover { text-decoration: underline; }
@@ -52,7 +54,7 @@
     .price { font-size: 27px; } .logo { width: 46px; height: 46px; } .id { gap: 0.65rem; }
     .label { font-size: 10px; } .pill { font-size: 10px; padding: 3px 8px; }
     .stats { gap: 0.45rem; } .stat { padding: 0.55rem 0.6rem; border-radius: 10px; }
-    .stat .k { font-size: 9px; } .stat .v { font-size: 14px; } .stat .s { font-size: 11px; }
+    .stat .k { font-size: 9px; } .stat .v { font-size: 14px; } .stat .s { font-size: 11px; } .stat .duo { font-size: 13px; }
     .foot { font-size: 10px; }
   }
   @media (max-width: 360px) { .stats { grid-template-columns: 1fr; } }
@@ -79,8 +81,8 @@
     </div>
 
     <div class="stats">
-      <div class="stat"><div class="k">Collateral</div><div id="coll0" class="v skel">—</div><div id="coll1" class="s"></div></div>
-      <div class="stat"><div class="k">Borrowed</div><div id="debt0" class="v skel">—</div><div id="debt1" class="s"></div></div>
+      <div class="stat"><div class="k">Collateral</div><div id="coll0" class="duo skel">—</div><div id="coll1" class="duo"></div></div>
+      <div class="stat"><div class="k">Borrowed</div><div id="debt0" class="duo skel">—</div><div id="debt1" class="duo"></div></div>
       <div class="stat"><div class="k">Pool price</div><div id="poolprice" class="v skel">—</div><div class="s">RWT per stRWT</div></div>
     </div>
 
