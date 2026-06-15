@@ -1,0 +1,7 @@
+{
+  "note": "Daily stRWT exchange-rate snapshots. Appended by .github/workflows/snapshot.yml. rate = RWT per stRWT.",
+  "points": [
+    { "t": "2026-06-12", "rate": 10.0 },
+    { "t": "2026-06-15", "rate": 10.099, "staked": 1010, "holders": 3 }
+  ]
+}
