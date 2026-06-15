@@ -23,10 +23,13 @@
   .card { position: relative; border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem 1.4rem 1.1rem; background: var(--panel); }
   .top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
   .id { display: flex; align-items: center; gap: 1.5rem; }
-  .rev { text-align: right; min-width: 150px; }
-  .rev-h { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
-  .rev-v { font-size: 28px; font-weight: 750; line-height: 1.05; letter-spacing: -0.01em; }
-  .rev-s { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .brand { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.9rem; }
+  .brand .logo { width: 40px; height: auto; }
+  .hero2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  .bigstat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 0.9rem 1.05rem; }
+  .bigstat .bk { font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+  .bigstat .bv { font-size: 30px; font-weight: 750; line-height: 1.05; letter-spacing: -0.02em; margin-top: 5px; }
+  .bigstat .bs { font-size: 11px; color: var(--muted); margin-top: 4px; }
   .logo { width: 50px; height: auto; flex: 0 0 auto; }
   .areal-dark { display: none; } .areal-light { display: block; }
   @media (prefers-color-scheme: dark) { .areal-dark { display: block; } .areal-light { display: none; } }
@@ -49,7 +52,8 @@
   .err { color: var(--err); } .skel { color: var(--muted); }
   @media (max-width: 480px) {
     .card { padding: 1rem 1rem 0.9rem; border-radius: 14px; }
-    .price { font-size: 30px; } .logo { width: 44px; height: 44px; } .top { gap: 0.65rem; }
+    .brand .logo { width: 34px; }
+    .hero2 { gap: 0.45rem; } .bigstat { padding: 0.7rem 0.8rem; } .bigstat .bv { font-size: 24px; } .bigstat .bs { font-size: 10px; }
     .stats { gap: 0.45rem; } .stat { padding: 0.6rem 0.65rem; border-radius: 10px; }
     .stat .k { font-size: 9px; } .stat .v { font-size: 16px; } .stat .s { font-size: 11px; } .tlogo { width: 30px; height: 30px; }
     .foot { font-size: 9.5px; flex-direction: column; gap: 0.3rem; }
@@ -59,20 +63,22 @@
 </head>
 <body>
   <div class="card">
-    <div class="top">
-      <div class="id">
-        <img class="logo areal-light" src="./areal-dark.svg" alt="Areal" />
-        <img class="logo areal-dark" src="./areal-white.svg" alt="Areal" />
-        <div>
-          <div class="label"><span class="dot"></span> Areal Finance</div>
-          <div class="sub">RWA Basket Value</div>
-          <div id="tvl" class="price skel">$—</div>
-        </div>
+    <div class="brand">
+      <img class="logo areal-light" src="./areal-dark.svg" alt="Areal" />
+      <img class="logo areal-dark" src="./areal-white.svg" alt="Areal" />
+      <div class="label"><span class="dot"></span> Areal Finance</div>
+    </div>
+
+    <div class="hero2">
+      <div class="bigstat">
+        <div class="bk">RWA Basket Value</div>
+        <div id="tvl" class="bv skel">$—</div>
+        <div class="bs">on-chain basket capital</div>
       </div>
-      <div class="rev">
-        <div class="rev-h">Revenue generated</div>
-        <div id="rev" class="rev-v skel">$—</div>
-        <div class="rev-s">by the RWA basket</div>
+      <div class="bigstat">
+        <div class="bk">Revenue Generated</div>
+        <div id="rev" class="bv skel">$—</div>
+        <div class="bs">by the RWA basket</div>
       </div>
     </div>
 
