@@ -171,10 +171,13 @@
       const hl = svg.querySelector("#hl"), hd = svg.querySelector("#hd");
       if (hl) { hl.setAttribute("x1", px); hl.setAttribute("x2", px); hl.setAttribute("opacity", "0.5"); }
       if (hd) { hd.setAttribute("cx", px); hd.setAttribute("cy", py); hd.setAttribute("opacity", "1"); }
-      tip.style.left = (px / W) * rect.width + "px";
-      tip.style.top = (py / H) * rect.height + "px";
       tip.innerHTML = '<div class="tv">' + fmt(p.rate, 4) + ' RWT</div><div class="td">' + p.t + '</div>';
+      tip.style.top = (py / H) * rect.height + "px";
       tip.style.opacity = "1";
+      const half = tip.offsetWidth / 2;
+      let lx = (px / W) * rect.width;
+      lx = Math.min(rect.width - half - 2, Math.max(half + 2, lx));
+      tip.style.left = lx + "px";
     };
     const hide = () => {
       const hl = svg.querySelector("#hl"), hd = svg.querySelector("#hd");
