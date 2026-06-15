@@ -190,6 +190,13 @@
     svg.addEventListener("touchend", hide);
   }
 
+  let baseRate = null, curRate = null;
+  function updatePill() {
+    if (baseRate == null || curRate == null) return;
+    const g = (curRate / baseRate - 1) * 100;
+    $("pill").textContent = (g >= 0 ? "+" : "") + g.toFixed(2) + "% all time";
+  }
+
   async function loadLive() {
     try {
       const [stSup, poolAcc, rwtSup, earnAcc] = await Promise.all([
@@ -207,7 +214,7 @@
       const nav = rwtSupply === 0 ? 1 : Number(capital) / rwtSupply; // USD per RWT
       const rate = (poolRaw + VA) / (strwtSupply + VS);              // RWT per stRWT
       const price = rate * nav;                                       // USD per stRWT
-      const growth = (rate / 10 - 1) * 100;                           // vs bootstrap rate (10)
+      curRate = rate;
 
       $("rate").classList.remove("skel"); $("usd").classList.remove("skel");
       $("staked").classList.remove("skel"); $("stsupply").classList.remove("skel");
@@ -216,8 +223,7 @@
       $("staked").textContent = grp(poolRaw / 1e6);
       $("stakedpct").textContent = (100 * poolRaw / rwtSupply).toFixed(2) + "% of " + grp(rwtSupply / 1e6) + " supply";
       $("stsupply").textContent = grp(strwtSupply / 1e6);
-      const sign = growth >= 0 ? "+" : "";
-      $("pill").textContent = sign + growth.toFixed(2) + "% all time";
+      updatePill();
       $("status").textContent = "Updated " + new Date().toISOString().slice(11, 19) + " UTC · every 30s";
       $("status").classList.remove("err");
     } catch (e) {
@@ -231,6 +237,8 @@
       const h = await fetch("./history.json", { cache: "no-store" }).then((r) => r.json());
       const series = (h.points || []).filter((p) => typeof p.rate === "number");
       drawChart(series);
+      baseRate = series.length ? series[0].rate : null;
+      updatePill();
       const last = series[series.length - 1] || {};
       if (typeof last.holders === "number") { $("holders").classList.remove("skel"); $("holders").textContent = grp(last.holders); }
       else $("holders").textContent = "—";
