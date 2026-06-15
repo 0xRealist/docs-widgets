@@ -10,8 +10,9 @@
   :root {
     --fg: #e9eef6; --muted: rgba(233,238,246,0.55);
     --panel: rgba(138,160,200,0.06); --panel2: rgba(138,160,200,0.10);
-    --border: rgba(138,160,200,0.18); --accent: #aebfdb; --good: #41c98a; --err: #e06b6b;
+    --border: rgba(138,160,200,0.18); --accent: #aebfdb; --good: #41c98a;
     --track: rgba(138,160,200,0.14);
+    --assets: #8aa0c8; --cash: #5fbf9b;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: #0b0c0e; }
@@ -19,10 +20,16 @@
   .card { border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem 1.4rem 1.15rem; background: var(--panel); }
   .hd { display: flex; align-items: center; gap: 8px; margin-bottom: 0.9rem; }
   .hd-title { font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
-  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem; margin-bottom: 1.2rem; }
-  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 0.7rem 0.85rem; }
-  .stat .k { font-size: 9.5px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
-  .stat .v { font-size: 19px; font-weight: 700; margin-top: 4px; }
+  .lbl { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .hero { font-size: 34px; font-weight: 750; letter-spacing: -0.02em; margin-top: 2px; }
+  .comp { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: var(--track); margin: 0.9rem 0 0.6rem; gap: 2px; }
+  .comp > span { height: 100%; }
+  .legend { display: flex; flex-wrap: wrap; gap: 1.1rem; font-size: 12px; color: var(--muted); }
+  .legend .dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; margin-right: 6px; vertical-align: -1px; }
+  .legend b { color: var(--fg); font-weight: 700; }
+  .mini { display: flex; gap: 1.6rem; margin: 1.1rem 0 1.2rem; }
+  .mini .k { font-size: 9.5px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+  .mini .v { font-size: 18px; font-weight: 700; margin-top: 3px; }
   .bd-h { font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.7rem; }
   .ra-row { margin-bottom: 0.95rem; }
   .ra-top { display: flex; justify-content: space-between; gap: 0.6rem; align-items: baseline; }
@@ -36,7 +43,7 @@
   .skel { color: var(--muted); }
   @media (max-width: 480px) {
     .card { padding: 1rem 1rem 0.9rem; border-radius: 14px; }
-    .stats { grid-template-columns: repeat(2, 1fr); gap: 0.45rem; } .stat { padding: 0.55rem 0.6rem; } .stat .k { font-size: 9px; } .stat .v { font-size: 16px; }
+    .hero { font-size: 28px; } .mini { gap: 1.1rem; } .mini .v { font-size: 16px; }
   }
 </style>
 </head>
@@ -44,24 +51,30 @@
   <div class="card">
     <div class="hd"><span class="hd-title">RWA Basket · revenue</span></div>
 
-    <div class="stats">
-      <div class="stat"><div class="k">Assets</div><div id="count" class="v skel">—</div></div>
-      <div class="stat"><div class="k">Total value</div><div id="total" class="v skel">—</div></div>
-      <div class="stat"><div class="k">Cash</div><div id="cash" class="v skel">—</div></div>
-      <div class="stat"><div class="k">Yield generated</div><div id="yield" class="v skel">—</div></div>
+    <div class="lbl">Basket value</div>
+    <div id="basket" class="hero skel">$—</div>
+
+    <div class="comp"><span id="seg-a" style="width:0;background:var(--assets)"></span><span id="seg-c" style="width:0;background:var(--cash)"></span></div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--assets)"></span>Assets <b id="lg-a">—</b></span>
+      <span><span class="dot" style="background:var(--cash)"></span>Cash <b id="lg-c">—</b></span>
+    </div>
+
+    <div class="mini">
+      <div><div class="k">Assets</div><div id="count" class="v skel">—</div></div>
+      <div><div class="k">Yield generated</div><div id="yield" class="v skel">—</div></div>
     </div>
 
     <div class="bd-h">Breakdown by asset</div>
     <div id="rows"><div class="skel">Loading…</div></div>
 
-    <div class="foot" id="foot">From the RWA asset registry.</div>
+    <div class="foot" id="foot">Basket value is read on-chain; assets from the RWA registry.</div>
   </div>
 
 <script>
   const RPCS = ["https://solana-rpc.publicnode.com", "https://api.mainnet-beta.solana.com"];
   let rpcIdx = 0;
   const EARN = "5GyVeryGnTPPtfteYaj5pNUjE9s2DDDpDnccgoFjV8L3"; // EarnConfig PDA (RWA basket value)
-
   const $ = (id) => document.getElementById(id);
   const usd = (n) => "$" + n.toLocaleString("en-US", { maximumFractionDigits: 0 });
 
@@ -81,44 +94,48 @@
     throw lastErr || new Error("all RPCs failed");
   }
 
+  async function basketValueUsd() {
+    const earn = await rpc("getAccountInfo", [EARN, { encoding: "base64" }]);
+    const bin = atob(earn.result.value.data[0]);
+    let capital = 0n;
+    for (let i = 0; i < 16; i++) capital += BigInt(bin.charCodeAt(8 + i)) << (8n * BigInt(i));
+    return Number(capital) / 1e6;
+  }
+
   async function load() {
     try {
       const data = await fetch("./assets.json", { cache: "no-store" }).then((r) => r.json());
       const assets = (data.assets || []).slice();
-      const totalValue = assets.reduce((s, a) => s + (a.value || 0), 0);
+      const deployed = assets.reduce((s, a) => s + (a.value || 0), 0);
       const totalYield = assets.reduce((s, a) => s + (a.yield || 0), 0);
 
-      $("count").classList.remove("skel"); $("total").classList.remove("skel"); $("yield").classList.remove("skel");
-      $("count").textContent = assets.length;
-      $("total").textContent = usd(totalValue);
-      $("yield").textContent = usd(totalYield);
+      let basket = deployed;
+      try { basket = await basketValueUsd(); } catch (e) { /* fallback to deployed */ }
+      const cash = Math.max(0, basket - deployed);
 
-      // Cash = on-chain basket value minus the sum of deployed RWA asset values
-      try {
-        const earn = await rpc("getAccountInfo", [EARN, { encoding: "base64" }]);
-        const bin = atob(earn.result.value.data[0]);
-        let capital = 0n;
-        for (let i = 0; i < 16; i++) capital += BigInt(bin.charCodeAt(8 + i)) << (8n * BigInt(i));
-        const basketValue = Number(capital) / 1e6;
-        $("cash").classList.remove("skel");
-        $("cash").textContent = usd(Math.max(0, basketValue - totalValue));
-      } catch (e) {
-        $("cash").textContent = "—";
-      }
+      $("basket").classList.remove("skel"); $("count").classList.remove("skel"); $("yield").classList.remove("skel");
+      $("basket").textContent = usd(basket);
+      $("count").textContent = assets.length;
+      $("yield").textContent = usd(totalYield);
+      $("lg-a").textContent = usd(deployed);
+      $("lg-c").textContent = usd(cash);
+      const aShare = basket > 0 ? (100 * deployed / basket) : 100;
+      $("seg-a").style.width = aShare.toFixed(2) + "%";
+      $("seg-c").style.width = (100 - aShare).toFixed(2) + "%";
 
       assets.sort((a, b) => (b.yield || 0) - (a.yield || 0) || (b.value || 0) - (a.value || 0));
       $("rows").innerHTML = assets.map((a) => {
-        const share = totalValue > 0 ? (100 * (a.value || 0) / totalValue) : 0;
-        const y = (a.yield || 0) > 0 ? '<span class="ra-yield">yield ' + usd(a.yield) + "</span>" : "yield " + usd(a.yield || 0);
+        const share = deployed > 0 ? (100 * (a.value || 0) / deployed) : 0;
+        const y = "yield " + usd(a.yield || 0);
         return '<div class="ra-row">' +
           '<div class="ra-top"><span class="ra-name">' + a.name + '</span><span class="ra-val">' + usd(a.value || 0) + '</span></div>' +
           '<div class="ra-bar"><i style="width:' + share.toFixed(1) + '%"></i></div>' +
           '<div class="ra-sub"><span>' + (a.type || "") + (a.location ? " · " + a.location : "") + '</span>' +
-          '<span>' + share.toFixed(1) + "% · " + y + '</span></div>' +
+          '<span>' + share.toFixed(1) + "% of assets · " + y + '</span></div>' +
           '</div>';
       }).join("") || '<div class="skel">No assets yet.</div>';
     } catch (e) {
-      $("foot").textContent = "Couldn’t load the asset registry.";
+      $("foot").textContent = "Couldn’t load the data.";
     }
   }
   load();
