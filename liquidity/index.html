@@ -12,15 +12,15 @@
     --panel: rgba(138,160,200,0.07); --panel2: rgba(138,160,200,0.10);
     --border: rgba(138,160,200,0.22); --accent: #5b6f94; --good: #2fae74; --err: #c0392b;
   }
-  @media (prefers-color-scheme: dark) {
+  
     :root {
       --fg: #e9eef6; --muted: rgba(233,238,246,0.55);
       --panel: rgba(138,160,200,0.06); --panel2: rgba(138,160,200,0.10);
       --border: rgba(138,160,200,0.18); --accent: #aebfdb; --good: #41c98a; --err: #e06b6b;
     }
-  }
+  
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: transparent; }
+  html, body { margin: 0; background: #0b0c0e; }
   body { font-family: "Halvar Breit", Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; color: var(--fg); -webkit-font-smoothing: antialiased; }
   .card { border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem 1.4rem 1.1rem; background: var(--panel); }
   .hd { display: flex; align-items: center; gap: 8px; margin-bottom: 0.8rem; }
