@@ -1,0 +1,12 @@
+{
+  "note": "RWA asset registry for the Revenue overview widget. Update as assets are acquired or report income.",
+  "assets": [
+    {
+      "name": "Mini Cooper Convertible",
+      "type": "Rental car",
+      "location": "Dubai, UAE",
+      "value": 25000,
+      "yield": 0
+    }
+  ]
+}
