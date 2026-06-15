@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Areal Protocol Overview</title>
 <style>
+  @font-face { font-family: "Halvar Breit"; src: url("../fonts/HalvarBreit-Rg.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+  @font-face { font-family: "Halvar Breit"; src: url("../fonts/HalvarBreit-Bd.ttf") format("truetype"); font-weight: 700; font-display: swap; }
   :root {
     --fg: #11151c; --muted: rgba(17,21,28,0.55);
     --panel: rgba(138,160,200,0.07); --panel2: rgba(138,160,200,0.10);
@@ -17,15 +19,9 @@
       --border: rgba(138,160,200,0.18); --accent: #aebfdb; --good: #41c98a; --err: #e06b6b;
     }
   }
-  @font-face {
-    font-family: "Halvar Breit";
-    src: url("./halvar-bd.ttf") format("truetype");
-    font-weight: 700;
-    font-display: swap;
-  }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: transparent; }
-  body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; color: var(--fg); -webkit-font-smoothing: antialiased; }
+  body { font-family: "Halvar Breit", Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; color: var(--fg); -webkit-font-smoothing: antialiased; }
   .card { position: relative; border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem 1.4rem 1.1rem; background: var(--panel); }
   .top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
   .id { display: flex; align-items: center; gap: 1.5rem; }
