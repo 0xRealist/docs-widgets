@@ -295,8 +295,14 @@
   setInterval(loadLive, 30000);
 
   function wfMeasure(){
-    var b = document.body, e = document.documentElement;
-    return Math.ceil(Math.max(b.scrollHeight, b.offsetHeight, e.scrollHeight, e.offsetHeight)) + 2;
+    // Measure actual rendered children, never the document/viewport (which only ratchets up).
+    var kids = document.body.children, max = 0;
+    for (var i = 0; i < kids.length; i++) {
+      var b = kids[i].getBoundingClientRect().bottom + window.scrollY;
+      if (b > max) max = b;
+    }
+    if (!max) max = document.body.scrollHeight;
+    return Math.ceil(max) + 2;
   }
   function wfPostHeight(){ try { parent.postMessage({ type: "wf-height", height: wfMeasure() }, "*"); } catch (e) {} }
   window.addEventListener("load", wfPostHeight);
