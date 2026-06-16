@@ -194,6 +194,11 @@
 
   loadLive(); loadHistory();
   setInterval(loadLive, 30000);
+
+  function wfPostHeight(){ try { parent.postMessage({ type: "wf-height", height: Math.ceil(document.body.scrollHeight) }, "*"); } catch (e) {} }
+  window.addEventListener("load", wfPostHeight);
+  if (window.ResizeObserver) { new ResizeObserver(wfPostHeight).observe(document.body); }
+  setTimeout(wfPostHeight, 600); setTimeout(wfPostHeight, 1800);
 </script>
 </body>
 </html>
