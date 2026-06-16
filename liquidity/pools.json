@@ -1,0 +1,12 @@
+{
+  "note": "Liquidity pools read directly on-chain. Add a pool by appending its address here. type=meteora-dlmm parses the LbPair account (token mints + reserve vaults).",
+  "pools": [
+    {
+      "address": "Ca57q4DhyQmX7ihBKyWuUtZts8sESRSNpFjjL9dtRKgd",
+      "type": "meteora-dlmm",
+      "dex": "Meteora",
+      "label": "DLMM",
+      "url": "https://www.meteora.ag/dlmm/Ca57q4DhyQmX7ihBKyWuUtZts8sESRSNpFjjL9dtRKgd"
+    }
+  ]
+}

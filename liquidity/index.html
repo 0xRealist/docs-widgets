@@ -8,17 +8,10 @@
   @font-face { font-family: "Halvar Breit"; src: url("../fonts/HalvarBreit-Rg.ttf") format("truetype"); font-weight: 400; font-display: swap; }
   @font-face { font-family: "Halvar Breit"; src: url("../fonts/HalvarBreit-Bd.ttf") format("truetype"); font-weight: 700; font-display: swap; }
   :root {
-    --fg: #11151c; --muted: rgba(17,21,28,0.55);
-    --panel: rgba(138,160,200,0.07); --panel2: rgba(138,160,200,0.10);
-    --border: rgba(138,160,200,0.22); --accent: #5b6f94; --good: #2fae74; --err: #c0392b;
+    --fg: #e9eef6; --muted: rgba(233,238,246,0.55);
+    --panel: rgba(138,160,200,0.06); --panel2: rgba(138,160,200,0.10);
+    --border: rgba(138,160,200,0.18); --accent: #aebfdb; --good: #41c98a; --err: #e06b6b;
   }
-  
-    :root {
-      --fg: #e9eef6; --muted: rgba(233,238,246,0.55);
-      --panel: rgba(138,160,200,0.06); --panel2: rgba(138,160,200,0.10);
-      --border: rgba(138,160,200,0.18); --accent: #aebfdb; --good: #41c98a; --err: #e06b6b;
-    }
-  
   * { box-sizing: border-box; }
   html, body { margin: 0; background: #0b0c0e; }
   body { font-family: "Halvar Breit", Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; color: var(--fg); -webkit-font-smoothing: antialiased; }
@@ -69,7 +62,7 @@
     <div class="stats">
       <div class="stat"><div class="k">RWT in pools</div><div id="rwt" class="v skel">—</div></div>
       <div class="stat"><div class="k">USDC in pools</div><div id="usdc" class="v skel">—</div></div>
-      <div class="stat"><div class="k">Avg price (vol)</div><div id="avg" class="v skel">—</div></div>
+      <div class="stat"><div class="k">RWT price (DEX)</div><div id="px" class="v skel">—</div></div>
     </div>
 
     <div class="pools-h">Liquidity pools</div>
@@ -77,70 +70,177 @@
 
     <div class="foot">
       <span id="status">Loading…</span>
-      <span>source: DexScreener</span>
+      <span>read on-chain</span>
     </div>
   </div>
 
 <script>
-  const MINT = "RWTeFt9M635Tf6w6yveAoXQR2ZwfXs7MfA7W3grDuGT"; // RWT mint
+  const RPCS = ["https://solana-rpc.publicnode.com", "https://api.mainnet-beta.solana.com"];
+  let rpcIdx = 0;
+  const RWT = "RWTeFt9M635Tf6w6yveAoXQR2ZwfXs7MfA7W3grDuGT";
+  const STRWT = "sRWTy1bkqvRegb31RETanhbAtJ7eXN6XsTvaqBRh6kA";
+  const EARN = "5GyVeryGnTPPtfteYaj5pNUjE9s2DDDpDnccgoFjV8L3"; // EarnConfig PDA (Book NAV)
+  const STAKE_POOL = "WtXa3NyQaiYdD6hJrDGkHcYyMKv722LqmPXij8hh2BT"; // staking RWT vault
+  const STABLES = {
+    "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": "USDC",
+    "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB": "USDT"
+  };
+  const SYMBOLS = Object.assign({ [RWT]: "RWT", [STRWT]: "stRWT" }, STABLES);
+
   const $ = (id) => document.getElementById(id);
   const fmt = (n, d) => n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
   const grp = (n) => n.toLocaleString("en-US", { maximumFractionDigits: 2 });
   const usd = (n) => "$" + (n >= 1000 ? n.toLocaleString("en-US", { maximumFractionDigits: 0 }) : fmt(n, 2));
-  const dexLogo = (id) => "https://dd.dexscreener.com/ds-data/dexes/" + id + ".png";
+  const dexLogo = (id) => "https://dd.dexscreener.com/ds-data/dexes/" + (id || "").toLowerCase() + ".png";
+
+  async function rpc(method, params) {
+    let lastErr;
+    for (let k = 0; k < RPCS.length; k++) {
+      const i = (rpcIdx + k) % RPCS.length;
+      try {
+        const r = await fetch(RPCS[i], { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        const j = await r.json();
+        if (j.error) throw new Error(j.error.message || "rpc error");
+        rpcIdx = i; return j;
+      } catch (e) { lastErr = e; }
+    }
+    throw lastErr || new Error("all RPCs failed");
+  }
+
+  // base58 encode a 32-byte pubkey
+  const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+  function b58(bytes) {
+    let zeros = 0; while (zeros < bytes.length && bytes[zeros] === 0) zeros++;
+    const digits = [0];
+    for (let i = zeros; i < bytes.length; i++) {
+      let carry = bytes[i];
+      for (let j = 0; j < digits.length; j++) { carry += digits[j] << 8; digits[j] = carry % 58; carry = (carry / 58) | 0; }
+      while (carry > 0) { digits.push(carry % 58); carry = (carry / 58) | 0; }
+    }
+    let out = ""; for (let i = 0; i < zeros; i++) out += "1";
+    for (let i = digits.length - 1; i >= 0; i--) out += B58[digits[i]];
+    return out;
+  }
+  function pubkeyAt(bin, off) {
+    const b = new Uint8Array(32);
+    for (let i = 0; i < 32; i++) b[i] = bin.charCodeAt(off + i);
+    return b58(b);
+  }
+  function i32At(bin, off) {
+    let v = 0; for (let i = 0; i < 4; i++) v += bin.charCodeAt(off + i) << (8 * i);
+    return v | 0; // signed
+  }
+  function u16At(bin, off) { return bin.charCodeAt(off) + bin.charCodeAt(off + 1) * 256; }
+
+  // Parse a Meteora DLMM LbPair account (offsets verified on-chain)
+  function parseDlmm(bin) {
+    return {
+      tokenX: pubkeyAt(bin, 88), tokenY: pubkeyAt(bin, 120),
+      reserveX: pubkeyAt(bin, 152), reserveY: pubkeyAt(bin, 184),
+      activeId: i32At(bin, 76), binStep: u16At(bin, 80),
+    };
+  }
+
+  async function bookNav() {
+    const [earn, sup] = await Promise.all([
+      rpc("getAccountInfo", [EARN, { encoding: "base64" }]),
+      rpc("getTokenSupply", [RWT]),
+    ]);
+    const bin = atob(earn.result.value.data[0]);
+    let capital = 0n; for (let i = 0; i < 16; i++) capital += BigInt(bin.charCodeAt(8 + i)) << (8n * BigInt(i));
+    const supply = Number(sup.result.value.amount);
+    return supply === 0 ? 1 : Number(capital) / supply; // USD per RWT
+  }
+
+  let _navStRWT = null;
+  async function navStRWTusd(navRWT) {
+    if (_navStRWT != null) return _navStRWT;
+    const [pool, sup] = await Promise.all([
+      rpc("getAccountInfo", [STAKE_POOL, { encoding: "jsonParsed" }]),
+      rpc("getTokenSupply", [STRWT]),
+    ]);
+    const poolRaw = Number(pool.result.value.data.parsed.info.tokenAmount.amount);
+    const stSupply = Number(sup.result.value.amount);
+    const rate = (poolRaw + 1e7) / (stSupply + 1e6);
+    _navStRWT = rate * navRWT;
+    return _navStRWT;
+  }
+
+  async function priceUsd(mint, navRWT) {
+    if (mint === RWT) return navRWT;
+    if (STABLES[mint]) return 1;
+    if (mint === STRWT) return await navStRWTusd(navRWT);
+    return null; // unknown token: not valued
+  }
+
+  async function readPool(p, navRWT) {
+    const acc = await rpc("getAccountInfo", [p.address, { encoding: "base64" }]);
+    if (!acc.result.value) throw new Error("pool not found");
+    const d = parseDlmm(atob(acc.result.value.data[0]));
+    const [bx, by] = await Promise.all([
+      rpc("getTokenAccountBalance", [d.reserveX]),
+      rpc("getTokenAccountBalance", [d.reserveY]),
+    ]);
+    const ax = Number(bx.result.value.uiAmount || 0), decX = bx.result.value.decimals;
+    const ay = Number(by.result.value.uiAmount || 0), decY = by.result.value.decimals;
+    const [px, py] = await Promise.all([priceUsd(d.tokenX, navRWT), priceUsd(d.tokenY, navRWT)]);
+    const usdX = px == null ? 0 : ax * px, usdY = py == null ? 0 : ay * py;
+    // DLMM spot price of X in Y, scaled by decimals
+    const spotXinY = Math.pow(1 + d.binStep / 10000, d.activeId) * Math.pow(10, decX - decY);
+    let rwtPrice = null;
+    if (d.tokenX === RWT && STABLES[d.tokenY]) rwtPrice = spotXinY;
+    else if (d.tokenY === RWT && STABLES[d.tokenX]) rwtPrice = spotXinY ? 1 / spotXinY : null;
+    return {
+      ...p, tvl: usdX + usdY,
+      rwt: (d.tokenX === RWT ? ax : 0) + (d.tokenY === RWT ? ay : 0),
+      usdc: (STABLES[d.tokenX] ? ax : 0) + (STABLES[d.tokenY] ? ay : 0),
+      pair: (SYMBOLS[d.tokenX] || "?") + " / " + (SYMBOLS[d.tokenY] || "?"),
+      rwtPrice,
+    };
+  }
 
   async function load() {
     try {
-      const r = await fetch("https://api.dexscreener.com/latest/dex/tokens/" + MINT, { cache: "no-store" });
-      const data = await r.json();
-      const pairs = (data.pairs || []).filter((p) => p.chainId === "solana" && (p.liquidity || {}).usd);
+      const reg = await fetch("./pools.json", { cache: "no-store" }).then((r) => r.json());
+      const list = (reg.pools || []).filter((p) => p.type === "meteora-dlmm");
+      const navRWT = await bookNav();
 
-      let tvl = 0, rwt = 0, usdc = 0, volSum = 0, pxVol = 0;
-      pairs.forEach((p) => {
-        const isBase = p.baseToken.address === MINT;
-        const rwtAmt = Number((isBase ? p.liquidity.base : p.liquidity.quote) || 0);
-        const otherAmt = Number((isBase ? p.liquidity.quote : p.liquidity.base) || 0);
-        const px = Number(p.priceUsd || 0);
-        const v = Number((p.volume || {}).h24 || 0);
-        tvl += Number(p.liquidity.usd || 0);
-        rwt += rwtAmt;
-        usdc += otherAmt; // quote is USDC for these pools
-        volSum += v; pxVol += px * v;
-      });
-      const avg = volSum > 0 ? pxVol / volSum : (pairs.length ? Number(pairs[0].priceUsd || 0) : 0);
+      const results = [];
+      for (const p of list) { try { results.push(await readPool(p, navRWT)); } catch (e) { /* skip bad pool */ } }
+      results.sort((a, b) => b.tvl - a.tvl);
 
-      ["tvl", "rwt", "usdc", "avg"].forEach((id) => $(id).classList.remove("skel"));
+      const tvl = results.reduce((s, r) => s + r.tvl, 0);
+      const rwt = results.reduce((s, r) => s + r.rwt, 0);
+      const usdc = results.reduce((s, r) => s + r.usdc, 0);
+      const px = (results.find((r) => r.rwtPrice != null) || {}).rwtPrice;
+
+      ["tvl", "rwt", "usdc", "px"].forEach((id) => $(id).classList.remove("skel"));
       $("tvl").textContent = usd(tvl);
       $("rwt").textContent = grp(rwt) + " RWT";
       $("usdc").textContent = grp(usdc) + " USDC";
-      $("avg").textContent = "$" + fmt(avg, 4);
+      $("px").textContent = px != null ? "$" + fmt(px, 4) : "$" + fmt(navRWT, 4);
 
-      pairs.sort((a, b) => (b.liquidity.usd || 0) - (a.liquidity.usd || 0));
-      $("pools").innerHTML = pairs.map((p) => {
-        const label = (p.labels && p.labels.length) ? " " + p.labels.join("/") : "";
-        const name = p.baseToken.symbol + " / " + p.quoteToken.symbol;
-        const dex = (p.dexId || "dex").charAt(0).toUpperCase() + (p.dexId || "dex").slice(1);
-        const link = p.dexId === "meteora"
-          ? "https://app.meteora.ag/dlmm/" + p.pairAddress
-          : (p.url || "#");
-        return '<div class="pool">' +
-          '<img src="' + dexLogo(p.dexId) + '" alt="" onerror="this.style.display=\'none\'" />' +
-          '<div><div class="pn">' + dex + label + '</div><div class="pm">' + name + '</div></div>' +
-          '<div class="pr"><div class="pv">' + usd(p.liquidity.usd || 0) + '</div>' +
-          '<a class="pl" href="' + link + '" target="_blank" rel="noreferrer">open ↗</a></div>' +
-          '</div>';
-      }).join("") || '<div class="sub">No pools found.</div>';
+      $("pools").innerHTML = results.map((r) =>
+        '<div class="pool">' +
+        '<img src="' + dexLogo(r.dex) + '" alt="" onerror="this.style.display=\'none\'" />' +
+        '<div><div class="pn">' + r.dex + (r.label ? " " + r.label : "") + '</div><div class="pm">' + r.pair + '</div></div>' +
+        '<div class="pr"><div class="pv">' + usd(r.tvl) + '</div>' +
+        '<a class="pl" href="' + (r.url || "#") + '" target="_blank" rel="noreferrer">open ↗</a></div>' +
+        '</div>'
+      ).join("") || '<div class="sub">No pools configured.</div>';
 
       $("status").textContent = "Updated " + new Date().toISOString().slice(11, 19) + " UTC · every 60s";
       $("status").classList.remove("err");
     } catch (e) {
-      $("status").textContent = "Couldn’t load liquidity, retrying…";
+      $("status").textContent = "RPC unavailable, retrying…";
       $("status").classList.add("err");
     }
   }
 
   load();
-  setInterval(load, 60000);
+  setInterval(() => { _navStRWT = null; load(); }, 60000);
 
   // Measure content height from body's children (body does not stretch to the iframe
   // viewport, so observing it never feeds back into our own height changes).
