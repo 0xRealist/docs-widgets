@@ -144,21 +144,27 @@
   load();
   setInterval(load, 30000);
 
+  // Measure content height from body's children (body does not stretch to the iframe
+  // viewport, so observing it never feeds back into our own height changes).
+  var wfLast = 0;
   function wfMeasure(){
-    // Measure actual rendered children, never the document/viewport (which only ratchets up).
     var kids = document.body.children, max = 0;
     for (var i = 0; i < kids.length; i++) {
-      var b = kids[i].getBoundingClientRect().bottom + window.scrollY;
+      var b = kids[i].getBoundingClientRect().bottom;
       if (b > max) max = b;
     }
     if (!max) max = document.body.scrollHeight;
-    return Math.ceil(max) + 2;
+    return Math.ceil(max) + 1;
   }
-  function wfPostHeight(){ try { parent.postMessage({ type: "wf-height", height: wfMeasure() }, "*"); } catch (e) {} }
+  function wfPostHeight(){
+    var h = wfMeasure();
+    if (h === wfLast) return;
+    wfLast = h;
+    try { parent.postMessage({ type: "wf-height", height: h }, "*"); } catch (e) {}
+  }
   window.addEventListener("load", wfPostHeight);
-  window.addEventListener("resize", wfPostHeight);
   if (document.fonts && document.fonts.ready) { document.fonts.ready.then(wfPostHeight); }
-  if (window.ResizeObserver) { new ResizeObserver(wfPostHeight).observe(document.documentElement); }
+  if (window.ResizeObserver) { new ResizeObserver(wfPostHeight).observe(document.body); }
   [50, 200, 500, 1000, 2000, 3500].forEach(function (t) { setTimeout(wfPostHeight, t); });
 </script>
 </body>
