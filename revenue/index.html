@@ -140,10 +140,16 @@
   }
   load();
 
-  function wfPostHeight(){ try { parent.postMessage({ type: "wf-height", height: Math.ceil(document.body.scrollHeight) }, "*"); } catch (e) {} }
+  function wfMeasure(){
+    var b = document.body, e = document.documentElement;
+    return Math.ceil(Math.max(b.scrollHeight, b.offsetHeight, e.scrollHeight, e.offsetHeight)) + 2;
+  }
+  function wfPostHeight(){ try { parent.postMessage({ type: "wf-height", height: wfMeasure() }, "*"); } catch (e) {} }
   window.addEventListener("load", wfPostHeight);
-  if (window.ResizeObserver) { new ResizeObserver(wfPostHeight).observe(document.body); }
-  setTimeout(wfPostHeight, 600); setTimeout(wfPostHeight, 1800);
+  window.addEventListener("resize", wfPostHeight);
+  if (document.fonts && document.fonts.ready) { document.fonts.ready.then(wfPostHeight); }
+  if (window.ResizeObserver) { new ResizeObserver(wfPostHeight).observe(document.documentElement); }
+  [50, 200, 500, 1000, 2000, 3500].forEach(function (t) { setTimeout(wfPostHeight, t); });
 </script>
 </body>
 </html>
