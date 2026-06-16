@@ -75,8 +75,8 @@
   const params = new URLSearchParams(location.search);
   const TOKEN = params.get("token") === "strwt" ? "strwt" : "rwt";
   const CFG = {
-    rwt:   { src: BASE + "/book-nav/history.json", field: "nav",  label: "RWT APY",   color: "#8aa0c8", logo: "./rwt.png",   note: "annualized from Book NAV growth" },
-    strwt: { src: BASE + "/strwt/history.json",    field: "rate", label: "stRWT APY", color: "#e3c27a", logo: "./strwt.png", note: "annualized from the exchange rate" },
+    rwt:   { src: BASE + "/book-nav/history.json", field: "nav",   label: "RWT APY",   color: "#8aa0c8", logo: "./rwt.png",   note: "annualized in USD from Book NAV growth" },
+    strwt: { src: BASE + "/strwt/history.json",    field: "price", label: "stRWT APY", color: "#e3c27a", logo: "./strwt.png", note: "annualized in USD (rate × Book NAV)" },
   }[TOKEN];
 
   const $ = (id) => document.getElementById(id);

@@ -117,7 +117,9 @@ async function main() {
     price: Number(price.toFixed(4)),
   };
   if (stOwners) stPoint.holders = stOwners.size;
-  const stApy = projectedApy(STK, "rate", stPoint); // stRWT APY from exchange-rate growth
+  // stRWT APY in USD: price = rate × Book NAV, so it captures both the rising
+  // exchange rate and the appreciation of the underlying RWT.
+  const stApy = projectedApy(STK, "price", stPoint);
   if (stApy !== null) stPoint.apy = Number(stApy.toFixed(2));
   appendPoint(STK, stPoint);
 }
