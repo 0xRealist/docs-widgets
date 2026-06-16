@@ -42,7 +42,8 @@
     .card { padding: 1rem 1.05rem 0.95rem; border-radius: 14px; }
     .count { font-size: 28px; } .unit { font-size: 14px; }
     .logo { width: 46px; height: 46px; } .id { gap: 0.7rem; }
-    .label { font-size: 10px; letter-spacing: 0.06em; }
+    .label { font-size: 10px; letter-spacing: 0.06em; } .pill { font-size: 10px; padding: 3px 8px; align-self: flex-start; }
+    .top { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
     svg.ch { height: 84px; }
     .foot { font-size: 10px; flex-direction: column; gap: 0.35rem; }
   }
@@ -58,6 +59,7 @@
           <div id="count" class="count skel">—</div>
         </div>
       </div>
+      <div id="pill" class="pill">growth</div>
     </div>
 
     <div class="chart">
@@ -178,7 +180,22 @@
         .map((p) => ({ t: p.t, v: p.supply }))
         .filter((p) => typeof p.v === "number");
       drawChart(series);
+      setPill(series);
     } catch (e) { /* keep headline */ }
+  }
+
+  // Growth rate of supply over the recorded history (percent + average per day)
+  function setPill(series) {
+    const pill = $("pill");
+    if (!series || series.length < 2) { pill.textContent = "new"; return; }
+    const first = series[0], last = series[series.length - 1];
+    let pct = first.v > 0 ? (last.v / first.v - 1) * 100 : 0;
+    if (Math.abs(pct) < 0.005) pct = 0;
+    const days = Math.max(1, (Date.parse(last.t) - Date.parse(first.t)) / 86400000);
+    let perDay = pct / days;
+    if (Math.abs(perDay) < 0.005) perDay = 0;
+    pill.textContent = (perDay >= 0 ? "+" : "") + perDay.toFixed(2) + "%/day";
+    pill.title = "Supply growth rate (per day, from snapshots)";
   }
 
   setupHover();
