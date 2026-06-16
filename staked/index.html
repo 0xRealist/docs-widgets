@@ -167,7 +167,7 @@
           // stRWT in circulation (fallback: derive from staked RWT and the rate)
           const stSupply = typeof p.supply === "number"
             ? p.supply
-            : (typeof p.staked === "number" && p.rate ? p.staked / p.rate : null);
+            : (typeof p.staked === "number" && p.rate ? Math.round(p.staked / p.rate) : null);
           const rwtSup = supplyByDate[p.t];
           // share of total RWT supply that is staked
           const pct = typeof p.staked === "number" && typeof rwtSup === "number" && rwtSup > 0
