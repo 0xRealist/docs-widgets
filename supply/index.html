@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RWT Total Supply</title>
+<style>
+  @font-face { font-family: "Halvar Breit"; src: url("../fonts/HalvarBreit-Rg.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+  @font-face { font-family: "Halvar Breit"; src: url("../fonts/HalvarBreit-Bd.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+  :root {
+    --fg: #e9eef6; --muted: rgba(233,238,246,0.55);
+    --panel: rgba(138,160,200,0.06); --panel2: rgba(138,160,200,0.10);
+    --border: rgba(138,160,200,0.18); --accent: #aebfdb; --good: #41c98a; --err: #e06b6b;
+    --tipbg: #1b212c;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #0b0c0e; }
+  body { font-family: "Halvar Breit", Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; color: var(--fg); -webkit-font-smoothing: antialiased; }
+  .card { position: relative; border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem 1.4rem 1.1rem; background: var(--panel); }
+  .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+  .id { display: flex; align-items: center; gap: 0.85rem; }
+  .logo { width: 56px; height: 56px; border-radius: 50%; flex: 0 0 auto; border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.2); }
+  .label { font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.35rem; display: flex; align-items: center; gap: 6px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); display: inline-block; box-shadow: 0 0 0 0 rgba(65,201,138,0.55); animation: pulse 2s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(65,201,138,0.5);} 70% { box-shadow: 0 0 0 6px rgba(65,201,138,0);} 100% { box-shadow: 0 0 0 0 rgba(65,201,138,0);} }
+  .count { font-size: 36px; font-weight: 750; line-height: 1.05; letter-spacing: -0.02em; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .unit { font-size: 16px; font-weight: 600; color: var(--muted); }
+  .chart { margin: 0.7rem 0 0.2rem; position: relative; }
+  svg.ch { display: block; width: 100%; height: 96px; overflow: visible; }
+  .tip { position: absolute; transform: translate(-50%, calc(-100% - 10px)); background: var(--tipbg);
+    border: 1px solid var(--border); border-radius: 8px; padding: 4px 9px; font-size: 11px;
+    white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .08s;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.28); z-index: 5; }
+  .tip .tv { font-weight: 700; }
+  .tip .td { color: var(--muted); font-size: 10px; }
+  .range { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+  .foot { margin-top: 0.85rem; font-size: 10.5px; color: var(--muted); display: flex; justify-content: space-between; gap: 1rem; }
+  .foot a { color: var(--accent); text-decoration: none; }
+  .foot a:hover { text-decoration: underline; }
+  .err { color: var(--err); } .skel { color: var(--muted); }
+  @media (max-width: 480px) {
+    .card { padding: 1rem 1.05rem 0.95rem; border-radius: 14px; }
+    .count { font-size: 28px; } .unit { font-size: 14px; }
+    .logo { width: 46px; height: 46px; } .id { gap: 0.7rem; }
+    .label { font-size: 10px; letter-spacing: 0.06em; }
+    svg.ch { height: 84px; }
+    .foot { font-size: 10px; flex-direction: column; gap: 0.35rem; }
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <div class="id">
+        <img class="logo" src="./rwt.png" alt="RWT" width="56" height="56" />
+        <div>
+          <div class="label"><span class="dot"></span> RWT Total Supply</div>
+          <div id="count" class="count skel">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart">
+      <svg id="chart" class="ch" viewBox="0 0 600 96" preserveAspectRatio="none" role="img" aria-label="RWT total supply over time"></svg>
+      <div id="tip" class="tip"></div>
+      <div class="range"><span id="r0">—</span><span id="r1">—</span></div>
+    </div>
+
+    <div class="foot">
+      <span id="status">Loading…</span>
+      <a href="https://solscan.io/token/RWTeFt9M635Tf6w6yveAoXQR2ZwfXs7MfA7W3grDuGT" target="_blank" rel="noreferrer">verify on-chain ↗</a>
+    </div>
+  </div>
+
+<script>
+  const RPCS = ["https://solana-rpc.publicnode.com", "https://api.mainnet-beta.solana.com"];
+  let rpcIdx = 0;
+  const RWT = "RWTeFt9M635Tf6w6yveAoXQR2ZwfXs7MfA7W3grDuGT";
+  const BASE = "https://0xrealist.github.io/docs-widgets";
+
+  const $ = (id) => document.getElementById(id);
+  const grp = (n) => n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+
+  async function rpc(method, params) {
+    let lastErr;
+    for (let k = 0; k < RPCS.length; k++) {
+      const i = (rpcIdx + k) % RPCS.length;
+      try {
+        const r = await fetch(RPCS[i], { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        const j = await r.json();
+        if (j.error) throw new Error(j.error.message || "rpc error");
+        rpcIdx = i; return j;
+      } catch (e) { lastErr = e; }
+    }
+    throw lastErr || new Error("all RPCs failed");
+  }
+
+  let CHART = null;
+  function drawChart(series) {
+    const svg = $("chart"), W = 600, H = 96, pad = 6;
+    if (!series || !series.length) { svg.innerHTML = ""; return; }
+    const vals = series.map((p) => p.v);
+    let min = Math.min(...vals), max = Math.max(...vals);
+    if (max - min < 1e-9) { const c = min || 1; min = c * 0.999; max = c * 1.001; }
+    const n = series.length;
+    const x = (i) => pad + (i * (W - 2 * pad)) / Math.max(1, n - 1);
+    const y = (v) => H - pad - ((v - min) / (max - min)) * (H - 2 * pad);
+    let line = "";
+    series.forEach((p, i) => { line += (i === 0 ? "M" : "L") + x(i).toFixed(2) + " " + y(p.v).toFixed(2) + " "; });
+    const area = line + "L" + x(n - 1).toFixed(2) + " " + (H - pad) + " L" + x(0).toFixed(2) + " " + (H - pad) + " Z";
+    const dot = '<circle cx="' + x(n - 1).toFixed(2) + '" cy="' + y(series[n - 1].v).toFixed(2) + '" r="4" fill="#8aa0c8"/>';
+    svg.innerHTML =
+      '<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8aa0c8" stop-opacity="0.35"/><stop offset="100%" stop-color="#8aa0c8" stop-opacity="0"/></linearGradient></defs>' +
+      '<path d="' + area + '" fill="url(#g)"/>' +
+      '<path d="' + line + '" fill="none" stroke="#8aa0c8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+      dot +
+      '<line id="hl" x1="0" y1="' + pad + '" x2="0" y2="' + (H - pad) + '" stroke="#8aa0c8" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>' +
+      '<circle id="hd" r="4.5" fill="#8aa0c8" opacity="0"/>';
+    $("r0").textContent = series[0].t; $("r1").textContent = series[n - 1].t;
+    CHART = { series, W, H, pad, n, x, y };
+  }
+
+  function setupHover() {
+    const svg = $("chart"), tip = $("tip");
+    const move = (clientX) => {
+      if (!CHART) return;
+      const { series, W, H, pad, n, x, y } = CHART;
+      const rect = svg.getBoundingClientRect();
+      const frac = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+      const step = (W - 2 * pad) / Math.max(1, n - 1);
+      let idx = Math.round((frac * W - pad) / step);
+      idx = Math.min(n - 1, Math.max(0, idx));
+      const p = series[idx], px = x(idx), py = y(p.v);
+      const hl = svg.querySelector("#hl"), hd = svg.querySelector("#hd");
+      if (hl) { hl.setAttribute("x1", px); hl.setAttribute("x2", px); hl.setAttribute("opacity", "0.5"); }
+      if (hd) { hd.setAttribute("cx", px); hd.setAttribute("cy", py); hd.setAttribute("opacity", "1"); }
+      tip.innerHTML = '<div class="tv">' + grp(p.v) + ' RWT</div><div class="td">' + p.t + '</div>';
+      tip.style.top = (py / H) * rect.height + "px";
+      tip.style.opacity = "1";
+      const half = tip.offsetWidth / 2;
+      let lx = (px / W) * rect.width;
+      lx = Math.min(rect.width - half - 6, Math.max(half + 6, lx));
+      tip.style.left = lx + "px";
+    };
+    const hide = () => {
+      const hl = svg.querySelector("#hl"), hd = svg.querySelector("#hd");
+      if (hl) hl.setAttribute("opacity", "0");
+      if (hd) hd.setAttribute("opacity", "0");
+      tip.style.opacity = "0";
+    };
+    svg.addEventListener("mousemove", (e) => move(e.clientX));
+    svg.addEventListener("mouseleave", hide);
+    svg.addEventListener("touchstart", (e) => move(e.touches[0].clientX), { passive: true });
+    svg.addEventListener("touchmove", (e) => move(e.touches[0].clientX), { passive: true });
+    svg.addEventListener("touchend", hide);
+  }
+
+  async function loadLive() {
+    try {
+      const sup = await rpc("getTokenSupply", [RWT]);
+      const supply = Number(sup.result.value.amount) / 1e6;
+      $("count").classList.remove("skel");
+      $("count").innerHTML = '<span>' + grp(supply) + '</span><span class="unit">RWT</span>';
+      $("status").textContent = "Updated " + new Date().toISOString().slice(11, 19) + " UTC · every 30s";
+      $("status").classList.remove("err");
+    } catch (e) {
+      $("status").textContent = "RPC unavailable, retrying…";
+      $("status").classList.add("err");
+    }
+  }
+
+  async function loadHistory() {
+    try {
+      const h = await fetch(BASE + "/book-nav/history.json", { cache: "no-store" }).then((r) => r.json());
+      const series = (h.points || [])
+        .map((p) => ({ t: p.t, v: p.supply }))
+        .filter((p) => typeof p.v === "number");
+      drawChart(series);
+    } catch (e) { /* keep headline */ }
+  }
+
+  setupHover();
+  loadLive(); loadHistory();
+  setInterval(loadLive, 30000);
+
+  // Measure content height from body's children (body does not stretch to the iframe
+  // viewport, so observing it never feeds back into our own height changes).
+  var wfLast = 0;
+  function wfMeasure(){
+    var kids = document.body.children, max = 0;
+    for (var i = 0; i < kids.length; i++) {
+      var b = kids[i].getBoundingClientRect().bottom;
+      if (b > max) max = b;
+    }
+    if (!max) max = document.body.scrollHeight;
+    return Math.ceil(max) + 1;
+  }
+  function wfPostHeight(){
+    var h = wfMeasure();
+    if (h === wfLast) return;
+    wfLast = h;
+    try { parent.postMessage({ type: "wf-height", height: h }, "*"); } catch (e) {}
+  }
+  window.addEventListener("load", wfPostHeight);
+  if (document.fonts && document.fonts.ready) { document.fonts.ready.then(wfPostHeight); }
+  if (window.ResizeObserver) { new ResizeObserver(wfPostHeight).observe(document.body); }
+  [50, 200, 500, 1000, 2000, 3500].forEach(function (t) { setTimeout(wfPostHeight, t); });
+</script>
+</body>
+</html>
