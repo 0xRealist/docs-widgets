@@ -58,14 +58,14 @@
   .foot a:hover { text-decoration: underline; }
   .err { color: var(--err); } .skel { color: var(--muted); }
   @media (max-width: 480px) {
-    .card { padding: 1rem 1rem 0.9rem; border-radius: 14px; }
-    .brand .logo { width: 34px; }
-    .hero2 { gap: 0.45rem; } .bigstat { padding: 0.7rem 0.8rem; } .bigstat .bv { font-size: 24px; } .bigstat .bs { font-size: 10px; }
-    .stats { gap: 0.45rem; } .stat { padding: 0.6rem 0.65rem; border-radius: 10px; }
-    .stat .k { font-size: 9px; } .stat .v { font-size: 16px; } .stat .s { font-size: 11px; } .tlogo { width: 30px; height: 30px; }
+    .card { padding: 1rem 1.05rem 0.95rem; border-radius: 14px; }
+    .brand { gap: 0.6rem; } .brand .logo { width: 34px; } .label { font-size: 15px; }
+    .hero2 { gap: 0.5rem; } .bigstat { padding: 0.8rem 0.85rem; } .bigstat .bv { font-size: 23px; } .bigstat .bs { font-size: 10px; }
+    .stats { grid-template-columns: 1fr; gap: 0.5rem; margin-top: 0.9rem; }
+    .stat { padding: 0.7rem 0.85rem; border-radius: 11px; } .stat.token { gap: 0.8rem; }
+    .stat .k { font-size: 10px; } .stat .v { font-size: 18px; } .stat .s { font-size: 11px; } .tlogo { width: 32px; height: 32px; }
     .foot { font-size: 9.5px; flex-direction: column; gap: 0.3rem; }
   }
-  @media (max-width: 360px) { .stats { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
