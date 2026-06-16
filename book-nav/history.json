@@ -27,7 +27,8 @@
       "capital": 25002,
       "supply": 25002,
       "holders": 4,
-      "holders_unique": 4
+      "holders_unique": 4,
+      "apy": 0
     }
   ]
 }
