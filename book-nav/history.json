@@ -20,6 +20,14 @@
       "supply": 25002,
       "holders": 4,
       "holders_unique": 4
+    },
+    {
+      "t": "2026-06-16",
+      "nav": 1,
+      "capital": 25002,
+      "supply": 25002,
+      "holders": 4,
+      "holders_unique": 4
     }
   ]
 }
