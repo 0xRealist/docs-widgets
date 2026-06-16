@@ -65,7 +65,6 @@
           <div id="count" class="count skel">—</div>
         </div>
       </div>
-      <div id="pill" class="pill">all time</div>
     </div>
 
     <div class="chart">
@@ -164,11 +163,9 @@
 
       if (series.length) {
         drawChart(series);
-        const last = series[series.length - 1], first = series[0];
+        const last = series[series.length - 1];
         $("count").classList.remove("skel");
         $("count").textContent = grp(last.v);
-        const delta = last.v - first.v;
-        $("pill").textContent = (delta >= 0 ? "+" : "") + grp(delta) + " all time";
       } else {
         $("count").textContent = "—";
       }
