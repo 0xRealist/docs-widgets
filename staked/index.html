@@ -91,8 +91,12 @@
     if (bMax - bMin < 1e-9) { bMin = Math.max(0, bMin - 0.5); bMax = bMax + 0.5; }
     const n = pts.length;
     const x = (i) => pad + (i * (W - 2 * pad)) / Math.max(1, n - 1);
-    const yA = (v) => H - pad - (v - aMin) / (aMax - aMin) * (H - 2 * pad);
-    const yB = (v) => H - pad - (v - bMin) / (bMax - bMin) * (H - 2 * pad);
+    // Separate vertical bands so the two lines never overlap: share (%) on top,
+    // absolute amount on the bottom.
+    const aTop = H * 0.54, aBot = H - pad; // absolute -> lower band
+    const bTop = pad, bBot = H * 0.46;     // share -> upper band
+    const yA = (v) => aBot - (v - aMin) / (aMax - aMin) * (aBot - aTop);
+    const yB = (v) => bBot - (v - bMin) / (bMax - bMin) * (bBot - bTop);
 
     function lineFor(key, scale, color) {
       const s = pts.map((p, i) => ({ i, v: p[key] })).filter((o) => typeof o.v === "number");
