@@ -60,6 +60,23 @@ function appendPoint(file, point) {
   console.log(file.pathname.split("/").slice(-2).join("/"), JSON.stringify(point));
 }
 
+// Annualized growth (%) of `field` from the first to the last dated point.
+function annualizedApy(points, field) {
+  const pts = points.filter((p) => typeof p[field] === "number" && p.t);
+  if (pts.length < 2) return null;
+  const f = pts[0], l = pts[pts.length - 1];
+  const days = (Date.parse(l.t) - Date.parse(f.t)) / 86400000;
+  if (days <= 0 || f[field] <= 0) return null;
+  return (Math.pow(l[field] / f[field], 365 / days) - 1) * 100;
+}
+
+// APY of `field` including the new point (projected onto the existing series).
+function projectedApy(file, field, point) {
+  const data = JSON.parse(readFileSync(file, "utf8"));
+  const pts = (data.points || []).filter((p) => p.t !== point.t).concat([point]);
+  return annualizedApy(pts, field);
+}
+
 async function main() {
   const t = new Date().toISOString().slice(0, 10);
 
@@ -83,6 +100,8 @@ async function main() {
   };
   if (rwtOwners) bookPoint.holders = rwtOwners.size;
   if (uniqueHolders !== null) bookPoint.holders_unique = uniqueHolders;
+  const bookApy = projectedApy(BOOK, "nav", bookPoint); // RWT APY from Book NAV growth
+  if (bookApy !== null) bookPoint.apy = Number(bookApy.toFixed(2));
   appendPoint(BOOK, bookPoint);
 
   // ---- stRWT exchange rate ----
@@ -98,6 +117,8 @@ async function main() {
     price: Number(price.toFixed(4)),
   };
   if (stOwners) stPoint.holders = stOwners.size;
+  const stApy = projectedApy(STK, "rate", stPoint); // stRWT APY from exchange-rate growth
+  if (stApy !== null) stPoint.apy = Number(stApy.toFixed(2));
   appendPoint(STK, stPoint);
 }
 

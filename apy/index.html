@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>APY history</title>
+<style>
+  @font-face { font-family: "Halvar Breit"; src: url("../fonts/HalvarBreit-Rg.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+  @font-face { font-family: "Halvar Breit"; src: url("../fonts/HalvarBreit-Bd.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+  :root {
+    --fg: #e9eef6; --muted: rgba(233,238,246,0.55);
+    --panel: rgba(138,160,200,0.06); --panel2: rgba(138,160,200,0.10);
+    --border: rgba(138,160,200,0.18); --accent: #aebfdb; --good: #41c98a; --err: #e06b6b;
+    --tipbg: #1b212c; --rwt: #8aa0c8; --strwt: #e3c27a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #0b0c0e; }
+  body { font-family: "Halvar Breit", Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; color: var(--fg); -webkit-font-smoothing: antialiased; }
+  .card { position: relative; border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem 1.4rem 1.1rem; background: var(--panel); }
+  .hd { display: flex; align-items: center; gap: 8px; margin-bottom: 0.9rem; }
+  .hd-title { font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); display: inline-block; box-shadow: 0 0 0 0 rgba(65,201,138,0.55); animation: pulse 2s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(65,201,138,0.5);} 70% { box-shadow: 0 0 0 6px rgba(65,201,138,0);} 100% { box-shadow: 0 0 0 0 rgba(65,201,138,0);} }
+  .sub { margin-left: auto; font-size: 10px; color: var(--muted); letter-spacing: 0.04em; }
+  .legend { display: flex; gap: 1.6rem; flex-wrap: wrap; }
+  .leg { }
+  .leg .lk { font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .leg .lk i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+  .leg .lv { font-size: 26px; font-weight: 750; letter-spacing: -0.02em; margin-top: 3px; }
+  .chart { margin: 1rem 0 0.2rem; position: relative; }
+  svg.ch { display: block; width: 100%; height: 104px; overflow: visible; }
+  .tip { position: absolute; transform: translate(-50%, calc(-100% - 10px)); background: var(--tipbg);
+    border: 1px solid var(--border); border-radius: 8px; padding: 5px 9px; font-size: 11px;
+    white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .08s;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.28); z-index: 5; }
+  .tip .tr { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+  .tip .tr i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+  .tip .td { color: var(--muted); font-size: 10px; margin-top: 2px; }
+  .range { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+  .foot { margin-top: 0.85rem; font-size: 10.5px; color: var(--muted); display: flex; justify-content: space-between; gap: 1rem; }
+  .err { color: var(--err); } .skel { color: var(--muted); }
+  @media (max-width: 480px) {
+    .card { padding: 1rem 1.05rem 0.95rem; border-radius: 14px; }
+    .legend { gap: 1.4rem; } .leg .lv { font-size: 22px; }
+    svg.ch { height: 92px; }
+    .foot { font-size: 10px; flex-direction: column; gap: 0.35rem; }
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="hd">
+      <span class="dot"></span>
+      <span class="hd-title">APY · annualized</span>
+      <span class="sub">from daily snapshots</span>
+    </div>
+
+    <div class="legend">
+      <div class="leg"><div class="lk"><i style="background:var(--rwt)"></i> RWT APY</div><div id="rwt" class="lv skel">—</div></div>
+      <div class="leg"><div class="lk"><i style="background:var(--strwt)"></i> stRWT APY</div><div id="strwt" class="lv skel">—</div></div>
+    </div>
+
+    <div class="chart">
+      <svg id="chart" class="ch" viewBox="0 0 600 104" preserveAspectRatio="none" role="img" aria-label="APY over time"></svg>
+      <div id="tip" class="tip"></div>
+      <div class="range"><span id="r0">—</span><span id="r1">—</span></div>
+    </div>
+
+    <div class="foot">
+      <span id="status">Loading…</span>
+      <span>not a guarantee of future returns</span>
+    </div>
+  </div>
+
+<script>
+  const BASE = "https://0xrealist.github.io/docs-widgets";
+  const RWT_C = "#8aa0c8", ST_C = "#e3c27a";
+  const $ = (id) => document.getElementById(id);
+  const pct = (x) => (x >= 0 ? "+" : "") + x.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
+
+  // Cumulative annualized APY of `field` up to each dated point: apy_i = (v_i/v_0)^(365/days_i) - 1.
+  function apySeries(points, field) {
+    const pts = points.filter((p) => typeof p[field] === "number" && p.t);
+    if (pts.length < 2) return [];
+    const v0 = pts[0][field], t0 = Date.parse(pts[0].t);
+    const out = [];
+    for (let i = 1; i < pts.length; i++) {
+      const days = (Date.parse(pts[i].t) - t0) / 86400000;
+      if (days <= 0 || v0 <= 0) continue;
+      out.push({ t: pts[i].t, v: (Math.pow(pts[i][field] / v0, 365 / days) - 1) * 100 });
+    }
+    return out;
+  }
+
+  let CHART = null;
+  function drawChart(sa, sb) {
+    const svg = $("chart"), W = 600, H = 104, pad = 8;
+    const all = sa.concat(sb);
+    if (!all.length) { svg.innerHTML = ""; return; }
+    const ts = all.map((p) => Date.parse(p.t));
+    let dMin = Math.min(...ts), dMax = Math.max(...ts);
+    if (dMax === dMin) { dMin -= 86400000; dMax += 86400000; }
+    let vMin = Math.min(0, ...all.map((p) => p.v)), vMax = Math.max(...all.map((p) => p.v));
+    if (vMax - vMin < 1e-9) { vMax = vMin + 1; }
+    const x = (t) => pad + (Date.parse(t) - dMin) / (dMax - dMin) * (W - 2 * pad);
+    const y = (v) => H - pad - (v - vMin) / (vMax - vMin) * (H - 2 * pad);
+
+    function path(s, color, id) {
+      if (s.length === 0) return "";
+      if (s.length === 1) return '<circle cx="' + x(s[0].t).toFixed(2) + '" cy="' + y(s[0].v).toFixed(2) + '" r="3.5" fill="' + color + '"/>';
+      let d = "";
+      s.forEach((p, i) => { d += (i === 0 ? "M" : "L") + x(p.t).toFixed(2) + " " + y(p.v).toFixed(2) + " "; });
+      const last = s[s.length - 1];
+      return '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+        '<circle cx="' + x(last.t).toFixed(2) + '" cy="' + y(last.v).toFixed(2) + '" r="3.5" fill="' + color + '"/>';
+    }
+    // zero baseline
+    const zeroY = y(0).toFixed(2);
+    svg.innerHTML =
+      '<line x1="' + pad + '" y1="' + zeroY + '" x2="' + (W - pad) + '" y2="' + zeroY + '" stroke="rgba(138,160,200,0.18)" stroke-width="1" stroke-dasharray="2 3"/>' +
+      path(sa, RWT_C) + path(sb, ST_C) +
+      '<line id="hl" x1="0" y1="' + pad + '" x2="0" y2="' + (H - pad) + '" stroke="#aebfdb" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>';
+    const dates = Array.from(new Set(all.map((p) => p.t))).sort();
+    $("r0").textContent = dates[0]; $("r1").textContent = dates[dates.length - 1];
+    CHART = { sa, sb, W, H, pad, x, y, dates };
+  }
+
+  function setupHover() {
+    const svg = $("chart"), tip = $("tip");
+    const move = (clientX) => {
+      if (!CHART) return;
+      const { sa, sb, W, x, dates } = CHART;
+      const rect = svg.getBoundingClientRect();
+      const px = (Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))) * W;
+      // nearest date
+      let best = dates[0], bd = Infinity;
+      dates.forEach((d) => { const dx = Math.abs(x(d) - px); if (dx < bd) { bd = dx; best = d; } });
+      const va = (sa.find((p) => p.t === best) || {}).v;
+      const vb = (sb.find((p) => p.t === best) || {}).v;
+      const hl = svg.querySelector("#hl");
+      if (hl) { const hx = x(best); hl.setAttribute("x1", hx); hl.setAttribute("x2", hx); hl.setAttribute("opacity", "0.5"); }
+      let html = "";
+      if (typeof va === "number") html += '<div class="tr"><i style="background:' + RWT_C + '"></i>RWT ' + pct(va) + '</div>';
+      if (typeof vb === "number") html += '<div class="tr"><i style="background:' + ST_C + '"></i>stRWT ' + pct(vb) + '</div>';
+      html += '<div class="td">' + best + '</div>';
+      tip.innerHTML = html;
+      tip.style.top = "0px"; tip.style.opacity = "1";
+      const half = tip.offsetWidth / 2;
+      let lx = (x(best) / W) * rect.width;
+      lx = Math.min(rect.width - half - 6, Math.max(half + 6, lx));
+      tip.style.left = lx + "px";
+    };
+    const hide = () => { const hl = svg.querySelector("#hl"); if (hl) hl.setAttribute("opacity", "0"); tip.style.opacity = "0"; };
+    svg.addEventListener("mousemove", (e) => move(e.clientX));
+    svg.addEventListener("mouseleave", hide);
+    svg.addEventListener("touchstart", (e) => move(e.touches[0].clientX), { passive: true });
+    svg.addEventListener("touchmove", (e) => move(e.touches[0].clientX), { passive: true });
+    svg.addEventListener("touchend", hide);
+  }
+
+  async function load() {
+    try {
+      const [book, st] = await Promise.all([
+        fetch(BASE + "/book-nav/history.json", { cache: "no-store" }).then((r) => r.json()),
+        fetch(BASE + "/strwt/history.json", { cache: "no-store" }).then((r) => r.json()),
+      ]);
+      const sa = apySeries(book.points || [], "nav");
+      const sb = apySeries(st.points || [], "rate");
+      drawChart(sa, sb);
+
+      $("rwt").classList.remove("skel"); $("strwt").classList.remove("skel");
+      $("rwt").textContent = sa.length ? pct(sa[sa.length - 1].v) : "—";
+      $("strwt").textContent = sb.length ? pct(sb[sb.length - 1].v) : "—";
+
+      const dates = sa.concat(sb).map((p) => p.t).sort();
+      $("status").textContent = dates.length ? "Last snapshot " + dates[dates.length - 1] : "Collecting snapshots…";
+      $("status").classList.remove("err");
+    } catch (e) {
+      $("status").textContent = "Couldn’t load snapshots, retrying…";
+      $("status").classList.add("err");
+    }
+  }
+
+  setupHover();
+  load();
+  setInterval(load, 300000);
+
+  // Measure content height from body's children (body does not stretch to the iframe
+  // viewport, so observing it never feeds back into our own height changes).
+  var wfLast = 0;
+  function wfMeasure(){
+    var kids = document.body.children, max = 0;
+    for (var i = 0; i < kids.length; i++) {
+      var b = kids[i].getBoundingClientRect().bottom;
+      if (b > max) max = b;
+    }
+    if (!max) max = document.body.scrollHeight;
+    return Math.ceil(max) + 1;
+  }
+  function wfPostHeight(){
+    var h = wfMeasure();
+    if (h === wfLast) return;
+    wfLast = h;
+    try { parent.postMessage({ type: "wf-height", height: h }, "*"); } catch (e) {}
+  }
+  window.addEventListener("load", wfPostHeight);
+  if (document.fonts && document.fonts.ready) { document.fonts.ready.then(wfPostHeight); }
+  if (window.ResizeObserver) { new ResizeObserver(wfPostHeight).observe(document.body); }
+  [50, 200, 500, 1000, 2000, 3500].forEach(function (t) { setTimeout(wfPostHeight, t); });
+</script>
+</body>
+</html>
