@@ -100,13 +100,14 @@
     .logo { width: 46px; height: 46px; }
     .id { gap: 0.7rem; }
     .label { font-size: 10px; letter-spacing: 0.06em; }
-    .pill { font-size: 10px; padding: 3px 8px; }
+    .top { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+    .pill { font-size: 10px; padding: 3px 8px; align-self: flex-start; }
     svg { height: 84px; }
     .stats { grid-template-columns: 1fr; gap: 0.5rem; margin-top: 0.9rem; }
     .stat { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.7rem 0.95rem; border-radius: 11px; }
     .stat .k { font-size: 10.5px; }
     .stat .v { font-size: 15px; margin-top: 0; text-align: right; }
-    .foot { font-size: 10px; }
+    .foot { font-size: 10px; flex-direction: column; gap: 0.35rem; }
   }
 </style>
 </head>
