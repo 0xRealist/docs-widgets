@@ -62,8 +62,8 @@
           <span class="sub">from daily snapshots</span>
         </div>
         <div class="legend">
-          <div class="leg"><div class="lk"><i style="background:var(--abs)"></i> Staked RWT</div><div id="abs" class="lv skel">—</div></div>
-          <div class="leg"><div class="lk"><i style="background:var(--pct)"></i> Share of supply</div><div id="pct" class="lv skel">—</div></div>
+          <div class="leg"><div class="lk"><i style="background:var(--abs)"></i> stRWT supply</div><div id="abs" class="lv skel">—</div></div>
+          <div class="leg"><div class="lk"><i style="background:var(--pct)"></i> RWT staked</div><div id="pct" class="lv skel">—</div></div>
         </div>
       </div>
     </div>
@@ -76,7 +76,7 @@
 
     <div class="foot">
       <span id="status">Loading…</span>
-      <span>RWT staked · % of total supply</span>
+      <span>stRWT in circulation · % of RWT staked</span>
     </div>
   </div>
 
@@ -135,8 +135,8 @@
       const p = pts[idx];
       const hl = svg.querySelector("#hl");
       if (hl) { const hx = x(idx); hl.setAttribute("x1", hx); hl.setAttribute("x2", hx); hl.setAttribute("opacity", "0.5"); }
-      let html = '<div class="tr"><i style="background:' + ABS_C + '"></i>' + grp(p.abs) + ' RWT</div>';
-      if (typeof p.pct === "number") html += '<div class="tr"><i style="background:' + PCT_C + '"></i>' + pctTxt(p.pct) + ' of supply</div>';
+      let html = '<div class="tr"><i style="background:' + ABS_C + '"></i>' + grp(p.abs) + ' stRWT</div>';
+      if (typeof p.pct === "number") html += '<div class="tr"><i style="background:' + PCT_C + '"></i>' + pctTxt(p.pct) + ' of RWT staked</div>';
       html += '<div class="td">' + p.t + '</div>';
       tip.innerHTML = html;
       tip.style.top = "0px"; tip.style.opacity = "1";
@@ -162,16 +162,24 @@
       const supplyByDate = {};
       (book.points || []).forEach((p) => { if (typeof p.supply === "number") supplyByDate[p.t] = p.supply; });
       const pts = (st.points || [])
-        .filter((p) => typeof p.staked === "number" && p.t)
+        .filter((p) => p.t && (typeof p.supply === "number" || typeof p.staked === "number"))
         .map((p) => {
-          const sup = supplyByDate[p.t];
-          return { t: p.t, abs: p.staked, pct: typeof sup === "number" && sup > 0 ? (100 * p.staked / sup) : null };
-        });
+          // stRWT in circulation (fallback: derive from staked RWT and the rate)
+          const stSupply = typeof p.supply === "number"
+            ? p.supply
+            : (typeof p.staked === "number" && p.rate ? p.staked / p.rate : null);
+          const rwtSup = supplyByDate[p.t];
+          // share of total RWT supply that is staked
+          const pct = typeof p.staked === "number" && typeof rwtSup === "number" && rwtSup > 0
+            ? (100 * p.staked / rwtSup) : null;
+          return { t: p.t, abs: stSupply, pct };
+        })
+        .filter((p) => typeof p.abs === "number");
 
       drawChart(pts);
       const last = pts[pts.length - 1];
       $("abs").classList.remove("skel"); $("pct").classList.remove("skel");
-      $("abs").innerHTML = last ? grp(last.abs) + '<small>RWT</small>' : "—";
+      $("abs").innerHTML = last ? grp(last.abs) + '<small>stRWT</small>' : "—";
       $("pct").textContent = last && typeof last.pct === "number" ? pctTxt(last.pct) : "—";
       $("status").textContent = last ? "Last snapshot " + last.t : "Collecting snapshots…";
       $("status").classList.remove("err");

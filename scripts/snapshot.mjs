@@ -113,7 +113,8 @@ async function main() {
   const stPoint = {
     t,
     rate: Number(rate.toFixed(6)),
-    staked: Math.round(poolRaw / 1e6),
+    staked: Math.round(poolRaw / 1e6),       // RWT locked in the staking pool
+    supply: Math.round(strwtSupply / 1e6),   // stRWT in circulation
     price: Number(price.toFixed(4)),
   };
   if (stOwners) stPoint.holders = stOwners.size;
