@@ -70,7 +70,7 @@
 
     <div class="foot">
       <span id="status">Loading…</span>
-      <span>read on-chain</span>
+      <span>on-chain · valued at pool price</span>
     </div>
   </div>
 
@@ -168,13 +168,6 @@
     return _navStRWT;
   }
 
-  async function priceUsd(mint, navRWT) {
-    if (mint === RWT) return navRWT;
-    if (STABLES[mint]) return 1;
-    if (mint === STRWT) return await navStRWTusd(navRWT);
-    return null; // unknown token: not valued
-  }
-
   async function readPool(p, navRWT) {
     const acc = await rpc("getAccountInfo", [p.address, { encoding: "base64" }]);
     if (!acc.result.value) throw new Error("pool not found");
@@ -185,13 +178,22 @@
     ]);
     const ax = Number(bx.result.value.uiAmount || 0), decX = bx.result.value.decimals;
     const ay = Number(by.result.value.uiAmount || 0), decY = by.result.value.decimals;
-    const [px, py] = await Promise.all([priceUsd(d.tokenX, navRWT), priceUsd(d.tokenY, navRWT)]);
-    const usdX = px == null ? 0 : ax * px, usdY = py == null ? 0 : ay * py;
     // DLMM spot price of X in Y, scaled by decimals
     const spotXinY = Math.pow(1 + d.binStep / 10000, d.activeId) * Math.pow(10, decX - decY);
+    // RWT market price (USD) from this pool when paired with a stablecoin; else fall back to Book NAV
     let rwtPrice = null;
     if (d.tokenX === RWT && STABLES[d.tokenY]) rwtPrice = spotXinY;
     else if (d.tokenY === RWT && STABLES[d.tokenX]) rwtPrice = spotXinY ? 1 / spotXinY : null;
+    const rwtUsd = rwtPrice != null ? rwtPrice : navRWT;
+    // Value each side at the current market price (RWT at the pool spot, stables $1, stRWT at rate x NAV)
+    const priceOf = async (mint) => {
+      if (mint === RWT) return rwtUsd;
+      if (STABLES[mint]) return 1;
+      if (mint === STRWT) return await navStRWTusd(navRWT);
+      return null;
+    };
+    const [px, py] = await Promise.all([priceOf(d.tokenX), priceOf(d.tokenY)]);
+    const usdX = px == null ? 0 : ax * px, usdY = py == null ? 0 : ay * py;
     return {
       ...p, tvl: usdX + usdY,
       rwt: (d.tokenX === RWT ? ax : 0) + (d.tokenY === RWT ? ay : 0),
