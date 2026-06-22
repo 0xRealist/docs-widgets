@@ -1,5 +1,5 @@
 {
-  "note": "Per-asset costs & amortization reserve. amortRateAnnualPct = annual depreciation rate (%). insuranceAnnual = yearly premium (USD). amortWallet = Solana USDC token account or owner; the widget reads its balance on-chain.",
+  "note": "Per-asset economics. amortRateAnnualPct = annual depreciation rate (%). insuranceAnnual / servicingAnnual / grossAnnual in USD per year. amortWallet = Solana USDC token account or owner; the widget reads its balance on-chain. Net yield = (grossAnnual - insurance - amortization - servicing) / value.",
   "assets": [
     {
       "id": "mini-cooper",
@@ -7,6 +7,8 @@
       "value": 25000,
       "amortRateAnnualPct": 6,
       "insuranceAnnual": 1000,
+      "servicingAnnual": 0,
+      "grossAnnual": null,
       "amortWallet": null
     }
   ]
