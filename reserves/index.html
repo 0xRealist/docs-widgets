@@ -58,15 +58,15 @@
       <span id="asset" class="asset">—</span>
     </div>
     <div class="lead">Insurance and amortization are deducted from gross rental income. Amortization is a
-      depreciation reserve set aside each period into a dedicated on-chain wallet for this asset.</div>
+      depreciation reserve set aside every month into a dedicated on-chain wallet for this asset.</div>
 
     <div class="stats">
-      <div class="stat"><div class="k"><i style="background:var(--ins)"></i> Insurance</div><div id="ins" class="v skel">—</div><div class="s">per period</div></div>
-      <div class="stat"><div class="k"><i style="background:var(--amo)"></i> Amortization</div><div id="amo" class="v skel">—</div><div class="s">per period</div></div>
+      <div class="stat"><div class="k"><i style="background:var(--ins)"></i> Insurance</div><div id="ins" class="v skel">—</div><div id="ins-s" class="s">per month</div></div>
+      <div class="stat"><div class="k"><i style="background:var(--amo)"></i> Amortization</div><div id="amo" class="v skel">—</div><div id="amo-s" class="s">per month</div></div>
       <div class="stat"><div class="k"><i style="background:var(--res)"></i> Reserve</div><div id="res" class="v skel">—</div><div class="s">accumulated on-chain</div></div>
     </div>
 
-    <div class="formula">Amortization per period = <b>Asset value</b> / <b>useful life</b> <span id="amobasis"></span></div>
+    <div class="formula">Set aside each month: <b id="total">—</b> <span id="breakdown"></span></div>
 
     <div class="wallet">
       <div>
@@ -89,7 +89,8 @@
   const ASSET_ID = params.get("asset") || null;
 
   const $ = (id) => document.getElementById(id);
-  const usd = (n) => "$" + n.toLocaleString("en-US", { maximumFractionDigits: n < 100 ? 2 : 0 });
+  const usd = (n) => "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const usd0 = (n) => "$" + n.toLocaleString("en-US", { maximumFractionDigits: 0 });
   const shortAddr = (a) => a.slice(0, 4) + "…" + a.slice(-4);
 
   async function rpc(method, params) {
@@ -132,12 +133,23 @@
       if (!a) { $("status").textContent = "No asset configured."; return; }
 
       $("asset").textContent = a.name || "";
-      const amo = (a.value && a.usefulLifeMonths) ? (a.value / a.usefulLifeMonths) : null;
+      // Monthly set-aside: amortization = value x annual rate / 12; insurance = annual premium / 12.
+      const amoMo = (a.value && a.amortRateAnnualPct) ? (a.value * a.amortRateAnnualPct / 100 / 12) : null;
+      const insMo = (typeof a.insuranceAnnual === "number") ? (a.insuranceAnnual / 12) : null;
 
       $("ins").classList.remove("skel"); $("amo").classList.remove("skel"); $("res").classList.remove("skel");
-      $("ins").textContent = typeof a.insurancePerPeriod === "number" ? usd(a.insurancePerPeriod) : "TBA";
-      $("amo").textContent = amo != null ? usd(amo) : "TBA";
-      $("amobasis").textContent = a.value ? "(" + usd(a.value) + (a.usefulLifeMonths ? " / " + a.usefulLifeMonths + " mo" : " / TBA") + ")" : "";
+      $("ins").textContent = insMo != null ? usd(insMo) : "TBA";
+      $("ins-s").textContent = typeof a.insuranceAnnual === "number" ? usd0(a.insuranceAnnual) + " / yr" : "per month";
+      $("amo").textContent = amoMo != null ? usd(amoMo) : "TBA";
+      $("amo-s").textContent = a.amortRateAnnualPct ? a.amortRateAnnualPct + "% / yr" : "per month";
+
+      if (amoMo != null || insMo != null) {
+        const total = (amoMo || 0) + (insMo || 0);
+        $("total").textContent = usd(total);
+        $("breakdown").textContent = "(amortization " + usd(amoMo || 0) + " + insurance " + usd(insMo || 0) + ")";
+      } else {
+        $("total").textContent = "TBA";
+      }
 
       if (a.amortWallet) {
         $("wallet").classList.remove("skel");

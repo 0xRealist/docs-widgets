@@ -1,12 +1,12 @@
 {
-  "note": "Per-asset costs & amortization reserve. Fill in usefulLifeMonths, insurancePerPeriod and amortWallet (Solana USDC token account) when known; the widget computes amortization and reads the wallet balance on-chain.",
+  "note": "Per-asset costs & amortization reserve. amortRateAnnualPct = annual depreciation rate (%). insuranceAnnual = yearly premium (USD). amortWallet = Solana USDC token account or owner; the widget reads its balance on-chain.",
   "assets": [
     {
       "id": "mini-cooper",
       "name": "Mini Cooper Convertible",
       "value": 25000,
-      "usefulLifeMonths": null,
-      "insurancePerPeriod": null,
+      "amortRateAnnualPct": 6,
+      "insuranceAnnual": 1000,
       "amortWallet": null
     }
   ]
