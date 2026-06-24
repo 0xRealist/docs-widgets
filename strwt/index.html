@@ -109,9 +109,13 @@
   let rpcIdx = 0;
   const STRWT = "sRWTy1bkqvRegb31RETanhbAtJ7eXN6XsTvaqBRh6kA"; // stRWT mint
   const RWT = "RWTeFt9M635Tf6w6yveAoXQR2ZwfXs7MfA7W3grDuGT";   // RWT mint
-  const POOL = "WtXa3NyQaiYdD6hJrDGkHcYyMKv722LqmPXij8hh2BT";  // staking pool RWT vault (ATA of StakingConfig PDA)
+  const CFG = "EwXST2yoQRBf3FEYe6fyoseatHaVypYck3ZQ5bEGzEUe";  // StakingConfig PDA (rate counters live here)
   const EARN = "5GyVeryGnTPPtfteYaj5pNUjE9s2DDDpDnccgoFjV8L3"; // EarnConfig PDA (for Book NAV)
   const VA = 10000000, VS = 1000000; // virtual assets/shares (bootstrap rate = 10)
+  // Rate numerator is the on-chain counter `total_rwt_active`, NOT the vault
+  // balance: the vault also holds `total_rwt_reserved` (RWT locked in unstake
+  // cooldown after the stRWT was burned). Using the vault would inflate the rate.
+  const ACTIVE_OFFSET = 201; // total_rwt_active (u64 LE) within StakingConfig data
 
   const $ = (id) => document.getElementById(id);
   const fmt = (n, d) => n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -203,20 +207,23 @@
 
   async function loadLive() {
     try {
-      const [stSup, poolAcc, rwtSup, earnAcc] = await Promise.all([
+      const [stSup, cfgAcc, rwtSup, earnAcc] = await Promise.all([
         rpc("getTokenSupply", [STRWT]),
-        rpc("getAccountInfo", [POOL, { encoding: "jsonParsed" }]),
+        rpc("getAccountInfo", [CFG, { encoding: "base64" }]),
         rpc("getTokenSupply", [RWT]),
         rpc("getAccountInfo", [EARN, { encoding: "base64" }]),
       ]);
       const strwtSupply = Number(stSup.result.value.amount);
-      const poolRaw = Number(poolAcc.result.value.data.parsed.info.tokenAmount.amount);
+      const cfgBin = atob(cfgAcc.result.value.data[0]);
+      let activeRaw = 0n; // total_rwt_active (u64 LE) — RWT actively staked, excludes cooldown
+      for (let i = 0; i < 8; i++) activeRaw += BigInt(cfgBin.charCodeAt(ACTIVE_OFFSET + i)) << (8n * BigInt(i));
+      const staked = Number(activeRaw);
       const rwtSupply = Number(rwtSup.result.value.amount);
       const bin = atob(earnAcc.result.value.data[0]);
       let capital = 0n;
       for (let i = 0; i < 16; i++) capital += BigInt(bin.charCodeAt(8 + i)) << (8n * BigInt(i));
       const nav = rwtSupply === 0 ? 1 : Number(capital) / rwtSupply; // USD per RWT
-      const rate = (poolRaw + VA) / (strwtSupply + VS);              // RWT per stRWT
+      const rate = (staked + VA) / (strwtSupply + VS);              // RWT per stRWT
       const price = rate * nav;                                       // USD per stRWT
       curRate = rate;
 
@@ -224,8 +231,8 @@
       $("staked").classList.remove("skel"); $("stsupply").classList.remove("skel");
       $("rate").innerHTML = '<span>' + fmt(rate, 4) + '</span><span class="unit">RWT</span>';
       $("usd").textContent = "1 stRWT ≈ $" + fmt(price, 2);
-      $("staked").textContent = grp(poolRaw / 1e6);
-      $("stakedpct").textContent = (100 * poolRaw / rwtSupply).toFixed(2) + "% of " + grp(rwtSupply / 1e6) + " supply";
+      $("staked").textContent = grp(staked / 1e6);
+      $("stakedpct").textContent = (100 * staked / rwtSupply).toFixed(2) + "% of " + grp(rwtSupply / 1e6) + " supply";
       $("stsupply").textContent = grp(strwtSupply / 1e6);
       updatePill();
       $("status").textContent = "Updated " + new Date().toISOString().slice(11, 19) + " UTC · every 30s";

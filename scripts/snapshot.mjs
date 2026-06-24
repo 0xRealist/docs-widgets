@@ -7,9 +7,10 @@ const RPC = process.env.RPC || "https://api.mainnet-beta.solana.com";
 const EARN = "5GyVeryGnTPPtfteYaj5pNUjE9s2DDDpDnccgoFjV8L3"; // EarnConfig PDA
 const RWT = "RWTeFt9M635Tf6w6yveAoXQR2ZwfXs7MfA7W3grDuGT"; // RWT mint
 const STRWT = "sRWTy1bkqvRegb31RETanhbAtJ7eXN6XsTvaqBRh6kA"; // stRWT mint
-const POOL = "WtXa3NyQaiYdD6hJrDGkHcYyMKv722LqmPXij8hh2BT"; // staking pool RWT vault
+const STAKING_CONFIG = "EwXST2yoQRBf3FEYe6fyoseatHaVypYck3ZQ5bEGzEUe"; // StakingConfig PDA
 const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const VA = 10000000, VS = 1000000; // virtual assets/shares (bootstrap rate = 10)
+const ACTIVE_OFFSET = 201; // total_rwt_active (u64 LE) within StakingConfig data — rate numerator
 
 // Protocol-owned token accounts to exclude from holder counts (not real holders).
 const EXCLUDE = new Set([
@@ -105,15 +106,19 @@ async function main() {
   appendPoint(BOOK, bookPoint);
 
   // ---- stRWT exchange rate ----
+  // Rate numerator is the on-chain counter `total_rwt_active`, NOT the vault
+  // balance: the vault also holds `total_rwt_reserved` (RWT locked in unstake
+  // cooldown after the stRWT was burned). Using the vault would inflate the rate.
   const strwtSupply = Number((await rpc("getTokenSupply", [STRWT])).value.amount);
-  const poolAcc = await rpc("getAccountInfo", [POOL, { encoding: "jsonParsed" }]);
-  const poolRaw = Number(poolAcc.value.data.parsed.info.tokenAmount.amount);
-  const rate = (poolRaw + VA) / (strwtSupply + VS); // RWT per stRWT
+  const cfgAcc = await rpc("getAccountInfo", [STAKING_CONFIG, { encoding: "base64" }]);
+  const cfgBin = Buffer.from(cfgAcc.value.data[0], "base64");
+  const activeRwt = Number(cfgBin.readBigUInt64LE(ACTIVE_OFFSET)); // RWT actively staked
+  const rate = (activeRwt + VA) / (strwtSupply + VS); // RWT per stRWT
   const price = rate * nav; // USD per stRWT
   const stPoint = {
     t,
     rate: Number(rate.toFixed(6)),
-    staked: Math.round(poolRaw / 1e6),       // RWT locked in the staking pool
+    staked: Math.round(activeRwt / 1e6),     // RWT actively staked (excludes cooldown)
     supply: Math.round(strwtSupply / 1e6),   // stRWT in circulation
     price: Number(price.toFixed(4)),
   };

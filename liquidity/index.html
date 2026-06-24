@@ -80,7 +80,8 @@
   const RWT = "RWTeFt9M635Tf6w6yveAoXQR2ZwfXs7MfA7W3grDuGT";
   const STRWT = "sRWTy1bkqvRegb31RETanhbAtJ7eXN6XsTvaqBRh6kA";
   const EARN = "5GyVeryGnTPPtfteYaj5pNUjE9s2DDDpDnccgoFjV8L3"; // EarnConfig PDA (Book NAV)
-  const STAKE_POOL = "WtXa3NyQaiYdD6hJrDGkHcYyMKv722LqmPXij8hh2BT"; // staking RWT vault
+  const STAKE_CFG = "EwXST2yoQRBf3FEYe6fyoseatHaVypYck3ZQ5bEGzEUe"; // StakingConfig PDA (rate counters)
+  const STAKE_ACTIVE_OFFSET = 201; // total_rwt_active (u64 LE) — rate numerator, not vault balance
   const STABLES = {
     "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": "USDC",
     "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB": "USDT"
@@ -157,13 +158,15 @@
   let _navStRWT = null;
   async function navStRWTusd(navRWT) {
     if (_navStRWT != null) return _navStRWT;
-    const [pool, sup] = await Promise.all([
-      rpc("getAccountInfo", [STAKE_POOL, { encoding: "jsonParsed" }]),
+    const [cfg, sup] = await Promise.all([
+      rpc("getAccountInfo", [STAKE_CFG, { encoding: "base64" }]),
       rpc("getTokenSupply", [STRWT]),
     ]);
-    const poolRaw = Number(pool.result.value.data.parsed.info.tokenAmount.amount);
+    const cfgBin = atob(cfg.result.value.data[0]);
+    let active = 0n; // total_rwt_active (u64 LE) — excludes cooldown reserve
+    for (let i = 0; i < 8; i++) active += BigInt(cfgBin.charCodeAt(STAKE_ACTIVE_OFFSET + i)) << (8n * BigInt(i));
     const stSupply = Number(sup.result.value.amount);
-    const rate = (poolRaw + 1e7) / (stSupply + 1e6);
+    const rate = (Number(active) + 1e7) / (stSupply + 1e6);
     _navStRWT = rate * navRWT;
     return _navStRWT;
   }
