@@ -1,0 +1,11 @@
+{
+  "note": "Daily ARL snapshots. Appended by .github/workflows/snapshot.yml. price = USD (DexScreener, most-liquid pair). supply = ARL circulating (mint supply). burned = genesis (25.8M) - supply. holders = unique owners (pools/treasury excluded).",
+  "points": [
+    {
+      "t": "2026-06-25",
+      "price": 0.003554,
+      "supply": 25799999.617278,
+      "burned": 0.382722
+    }
+  ]
+}

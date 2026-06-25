@@ -8,6 +8,8 @@ const EARN = "5GyVeryGnTPPtfteYaj5pNUjE9s2DDDpDnccgoFjV8L3"; // EarnConfig PDA
 const RWT = "RWTeFt9M635Tf6w6yveAoXQR2ZwfXs7MfA7W3grDuGT"; // RWT mint
 const STRWT = "sRWTy1bkqvRegb31RETanhbAtJ7eXN6XsTvaqBRh6kA"; // stRWT mint
 const STAKING_CONFIG = "EwXST2yoQRBf3FEYe6fyoseatHaVypYck3ZQ5bEGzEUe"; // StakingConfig PDA
+const ARL = "6JSXRGMH6wNiukuLi4x6rSHazJMQL51WGbzirXxsmeta"; // ARL governance token mint
+const ARL_GENESIS = 25800000; // ARL genesis supply; burned = genesis - circulating
 const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const VA = 10000000, VS = 1000000; // virtual assets/shares (bootstrap rate = 10)
 const ACTIVE_OFFSET = 201; // total_rwt_active (u64 LE) within StakingConfig data — rate numerator
@@ -16,10 +18,14 @@ const ACTIVE_OFFSET = 201; // total_rwt_active (u64 LE) within StakingConfig dat
 const EXCLUDE = new Set([
   "EYpKtcY5xkA8aQQTKYyEpFdRua5GM47YVWVfG9scn4Hd", // Omnipair market (pool reserves)
   "EwXST2yoQRBf3FEYe6fyoseatHaVypYck3ZQ5bEGzEUe", // staking pool (StakingConfig PDA)
+  "E45yD8h2ZsJdHFMPdowKvrC6gS9BgrcansUwHDEDokiF", // DAO treasury multisig vault
+  "5BhKSFDV3mNzUxCaAyMZtbakhkbApwzLBD4gnQmNoz3Z", // futarchy launch PDA / pool
+  "H24aevTrQjbeAEHbzvDa4yhovsoZUc4FTndtk6sspn7m", // Meteora ARL/USDC pool
 ]);
 
 const BOOK = new URL("../book-nav/history.json", import.meta.url);
 const STK = new URL("../strwt/history.json", import.meta.url);
+const ARLF = new URL("../arl/history.json", import.meta.url);
 
 async function rpc(method, params) {
   const r = await fetch(RPC, {
@@ -47,6 +53,18 @@ async function owners(mint) {
     return set;
   } catch (e) {
     console.warn("holders lookup failed for", mint, e.message);
+    return null;
+  }
+}
+
+// ARL price (USD) from DexScreener — most-liquid pair.
+async function arlPrice() {
+  try {
+    const d = await fetch("https://api.dexscreener.com/latest/dex/tokens/" + ARL).then((r) => r.json());
+    const pairs = (d.pairs || []).slice().sort((a, b) => ((b.liquidity || {}).usd || 0) - ((a.liquidity || {}).usd || 0));
+    return pairs.length ? Number(pairs[0].priceUsd) : null;
+  } catch (e) {
+    console.warn("ARL price lookup failed:", e.message);
     return null;
   }
 }
@@ -128,6 +146,26 @@ async function main() {
   const stApy = projectedApy(STK, "price", stPoint);
   if (stApy !== null) stPoint.apy = Number(stApy.toFixed(2));
   appendPoint(STK, stPoint);
+
+  // ---- ARL governance token ----
+  const arlSupplyRaw = (await rpc("getTokenSupply", [ARL])).value;
+  const arlSupply = Number(arlSupplyRaw.uiAmount);
+  const burned = Math.max(0, ARL_GENESIS - arlSupply);
+  const price = await arlPrice();
+  const arlOwners = await owners(ARL);
+  const arlPoint = {
+    t,
+    supply: Number(arlSupply.toFixed(6)),
+    burned: Number(burned.toFixed(6)),
+  };
+  if (price !== null) {
+    arlPoint.price = Number(price.toFixed(8));
+    arlPoint.mcap = Math.round(price * arlSupply);
+  }
+  if (arlOwners) arlPoint.holders = arlOwners.size;
+  const arlApy = projectedApy(ARLF, "price", arlPoint);
+  if (arlApy !== null) arlPoint.apy = Number(arlApy.toFixed(2));
+  appendPoint(ARLF, arlPoint);
 }
 
 main().catch((e) => {
