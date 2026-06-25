@@ -99,6 +99,13 @@
       "holders": 9,
       "holders_unique": 151,
       "apy": 0
+    },
+    {
+      "t": "2026-06-25",
+      "nav": 1,
+      "capital": 25314,
+      "supply": 25314,
+      "apy": 0
     }
   ]
 }
