@@ -151,16 +151,16 @@ async function main() {
   const arlSupplyRaw = (await rpc("getTokenSupply", [ARL])).value;
   const arlSupply = Number(arlSupplyRaw.uiAmount);
   const burned = Math.max(0, ARL_GENESIS - arlSupply);
-  const price = await arlPrice();
+  const arlUsd = await arlPrice();
   const arlOwners = await owners(ARL);
   const arlPoint = {
     t,
     supply: Number(arlSupply.toFixed(6)),
     burned: Number(burned.toFixed(6)),
   };
-  if (price !== null) {
-    arlPoint.price = Number(price.toFixed(8));
-    arlPoint.mcap = Math.round(price * arlSupply);
+  if (arlUsd !== null) {
+    arlPoint.price = Number(arlUsd.toFixed(8));
+    arlPoint.mcap = Math.round(arlUsd * arlSupply);
   }
   if (arlOwners) arlPoint.holders = arlOwners.size;
   const arlApy = projectedApy(ARLF, "price", arlPoint);
