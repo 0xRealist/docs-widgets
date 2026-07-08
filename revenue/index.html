@@ -31,14 +31,13 @@
   .mini .k { font-size: 9.5px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
   .mini .v { font-size: 18px; font-weight: 700; margin-top: 3px; }
   .bd-h { font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.7rem; }
-  .ra-row { margin-bottom: 0.95rem; }
+  .ra-row { padding: 0.75rem 0; border-top: 1px solid var(--border); }
+  .ra-row:first-child { border-top: 0; padding-top: 0.15rem; }
   .ra-top { display: flex; justify-content: space-between; gap: 0.6rem; align-items: baseline; }
-  .ra-name { font-size: 0.95rem; font-weight: 700; }
-  .ra-val { font-size: 0.95rem; font-weight: 700; }
-  .ra-bar { height: 8px; border-radius: 999px; background: var(--track); overflow: hidden; margin: 6px 0 4px; }
-  .ra-bar > i { display: block; height: 100%; background: linear-gradient(90deg,#8aa0c8,#aebfdb); border-radius: 999px; }
-  .ra-sub { display: flex; justify-content: space-between; gap: 0.6rem; font-size: 11px; color: var(--muted); }
-  .ra-yield { color: var(--good); font-weight: 600; }
+  .ra-name { font-size: 0.98rem; font-weight: 700; letter-spacing: -0.01em; }
+  .ra-val { font-size: 0.98rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ra-sub { display: flex; justify-content: space-between; gap: 0.6rem; font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+  .ra-yield { color: var(--good); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .foot { margin-top: 0.9rem; font-size: 10.5px; color: var(--muted); }
   .skel { color: var(--muted); }
   @media (max-width: 480px) {
@@ -148,12 +147,11 @@
       assets.sort((a, b) => (b.yield || 0) - (a.yield || 0) || (b.value || 0) - (a.value || 0));
       $("rows").innerHTML = assets.map((a) => {
         const share = deployed > 0 ? (100 * (a.value || 0) / deployed) : 0;
-        const y = "revenue " + usd(a.yield || 0);
+        const meta = (a.type || "") + (a.location ? " · " + a.location : "");
         return '<div class="ra-row">' +
           '<div class="ra-top"><span class="ra-name">' + a.name + '</span><span class="ra-val">' + usd(a.value || 0) + '</span></div>' +
-          '<div class="ra-bar"><i style="width:' + share.toFixed(1) + '%"></i></div>' +
-          '<div class="ra-sub"><span>' + (a.type || "") + (a.location ? " · " + a.location : "") + '</span>' +
-          '<span>' + share.toFixed(1) + "% of assets · " + y + '</span></div>' +
+          '<div class="ra-sub"><span>' + meta + " · " + share.toFixed(1) + '% of basket</span>' +
+          '<span class="ra-yield">revenue ' + usd(a.yield || 0) + '</span></div>' +
           '</div>';
       }).join("") || '<div class="skel">No assets yet.</div>';
     } catch (e) {
