@@ -1,7 +1,8 @@
 {
-  "note": "RWA asset registry for the Revenue overview widget. Update as assets are acquired or report income.",
+  "note": "RWA asset registry for the Revenue overview widget. Update as assets are acquired. Per-asset net profit is NOT stored here — it is derived from ../reserves/reserves.json (monthly reports minus amortization & insurance), matched by id, so both widgets stay in sync. yield is only a fallback if no economics entry exists.",
   "assets": [
     {
+      "id": "mini-cooper",
       "name": "Mini Cooper Convertible",
       "type": "Rental car",
       "location": "Dubai, UAE",

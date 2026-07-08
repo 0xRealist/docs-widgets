@@ -1,5 +1,5 @@
 {
-  "note": "Per-asset economics. amortRateAnnualPct = annual depreciation rate (%). insuranceAnnual / servicingAnnual / grossAnnual in USD per year. amortWallet = Solana USDC token account or owner; the widget reads its balance on-chain. Net yield = (grossAnnual - insurance - amortization - servicing) / value.",
+  "note": "Per-asset economics. reports[] = actual monthly earnings; rentalIncomeUsd is the protocol's OWN share of that month's rental in USD (the operator's cut is never shown). Monthly reserves accrue over calendar time: amortization = value*amortRateAnnualPct/100/12, insurance = insuranceAnnual/12. Net to RWT Engine (this month) = rentalIncomeUsd - amortization - insurance; net annual yield = net*12/value. amortWallet = on-chain USDC reserve, read live.",
   "assets": [
     {
       "id": "mini-cooper",
@@ -7,9 +7,10 @@
       "value": 25000,
       "amortRateAnnualPct": 6,
       "insuranceAnnual": 1000,
-      "servicingAnnual": 0,
-      "grossAnnual": null,
-      "amortWallet": null
+      "amortWallet": null,
+      "reports": [
+        { "period": "Jun 2026", "rentalIncomeUsd": 343.09 }
+      ]
     }
   ]
 }

@@ -66,13 +66,13 @@
 
     <div class="mini">
       <div><div class="k">Assets</div><div id="count" class="v skel">—</div></div>
-      <div><div class="k">Yield generated</div><div id="yield" class="v skel">—</div></div>
+      <div><div class="k">Net profit (all-time)</div><div id="yield" class="v skel">—</div></div>
     </div>
 
     <div class="bd-h">Breakdown by asset</div>
     <div id="rows"><div class="skel">Loading…</div></div>
 
-    <div class="foot" id="foot">Basket value is read on-chain; assets from the RWA registry.</div>
+    <div class="foot" id="foot">Basket value is read on-chain; net profit is all-time, after amortization &amp; insurance.</div>
   </div>
 
 <script>
@@ -106,10 +106,31 @@
     return Number(capital) / 1e6;
   }
 
+  // All-time net profit for one asset, derived from its economics entry in
+  // reserves.json (monthly reports minus amortization & insurance reserves).
+  // Same formula as the "Asset economics" widget, so both stay in sync.
+  function netProfitUsd(econ) {
+    if (!econ) return null;
+    const amoMo = (econ.value && econ.amortRateAnnualPct) ? (econ.value * econ.amortRateAnnualPct / 100 / 12) : 0;
+    const insMo = (typeof econ.insuranceAnnual === "number") ? (econ.insuranceAnnual / 12) : 0;
+    const months = (econ.reports || []).length;
+    const rental = (econ.reports || []).reduce((s, r) => s + (typeof r.rentalIncomeUsd === "number" ? r.rentalIncomeUsd : 0), 0);
+    return rental - (amoMo + insMo) * months;
+  }
+
   async function load() {
     try {
-      const data = await fetch("./assets.json", { cache: "no-store" }).then((r) => r.json());
-      const assets = (data.assets || []).slice();
+      const [data, econReg] = await Promise.all([
+        fetch("./assets.json", { cache: "no-store" }).then((r) => r.json()),
+        fetch("../reserves/reserves.json", { cache: "no-store" }).then((r) => r.json()).catch(() => ({ assets: [] })),
+      ]);
+      const econById = {};
+      (econReg.assets || []).forEach((e) => { if (e.id) econById[e.id] = e; });
+
+      const assets = (data.assets || []).map((a) => {
+        const np = a.id ? netProfitUsd(econById[a.id]) : null;
+        return Object.assign({}, a, { yield: np != null ? np : (a.yield || 0) });
+      });
       const deployed = assets.reduce((s, a) => s + (a.value || 0), 0);
       const totalYield = assets.reduce((s, a) => s + (a.yield || 0), 0);
 
@@ -130,7 +151,7 @@
       assets.sort((a, b) => (b.yield || 0) - (a.yield || 0) || (b.value || 0) - (a.value || 0));
       $("rows").innerHTML = assets.map((a) => {
         const share = deployed > 0 ? (100 * (a.value || 0) / deployed) : 0;
-        const y = "yield " + usd(a.yield || 0);
+        const y = "net " + usd(a.yield || 0);
         return '<div class="ra-row">' +
           '<div class="ra-top"><span class="ra-name">' + a.name + '</span><span class="ra-val">' + usd(a.value || 0) + '</span></div>' +
           '<div class="ra-bar"><i style="width:' + share.toFixed(1) + '%"></i></div>' +

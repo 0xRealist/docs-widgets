@@ -66,11 +66,11 @@
     <div id="netyield" class="hero skel">—</div>
     <div id="yieldsub" class="herosub">after insurance &amp; amortization</div>
 
-    <div class="sect">Income (per year)</div>
+    <div class="sect" id="period">All-time</div>
     <div class="stats">
-      <div class="stat"><div class="k">Gross income</div><div id="gross" class="v skel">—</div><div class="s">rental income</div></div>
-      <div class="stat"><div class="k">Costs</div><div id="costs" class="v skel">—</div><div class="s">insurance + amortization</div></div>
-      <div class="stat"><div class="k">Net income</div><div id="net" class="v skel">—</div><div class="s">to the basket</div></div>
+      <div class="stat"><div class="k">Rental income</div><div id="gross" class="v skel">—</div><div class="s">our share</div></div>
+      <div class="stat"><div class="k">Reserves</div><div id="costs" class="v skel">—</div><div class="s">insurance + amortization</div></div>
+      <div class="stat"><div class="k">Net income</div><div id="net" class="v skel">—</div><div class="s">to the RWT Engine</div></div>
     </div>
 
     <div class="sect">Monthly reserve</div>
@@ -147,45 +147,52 @@
       if (!a) { $("status").textContent = "No asset configured."; return; }
       $("asset").textContent = a.name || "";
 
-      // Annual figures
-      const amoAnnual = (a.value && a.amortRateAnnualPct) ? (a.value * a.amortRateAnnualPct / 100) : null;
-      const insAnnual = (typeof a.insuranceAnnual === "number") ? a.insuranceAnnual : null;
-      const svcAnnual = (typeof a.servicingAnnual === "number") ? a.servicingAnnual : 0;
-      const costsAnnual = (amoAnnual != null || insAnnual != null) ? ((amoAnnual || 0) + (insAnnual || 0) + svcAnnual) : null;
-      const grossAnnual = (typeof a.grossAnnual === "number") ? a.grossAnnual : null;
-      const netAnnual = (grossAnnual != null && costsAnnual != null) ? (grossAnnual - costsAnnual) : null;
+      // Monthly reserves accrue over calendar time
+      const amoMo = (a.value && a.amortRateAnnualPct) ? (a.value * a.amortRateAnnualPct / 100 / 12) : null;
+      const insMo = (typeof a.insuranceAnnual === "number") ? (a.insuranceAnnual / 12) : null;
+      const reservesMo = (amoMo || 0) + (insMo || 0);
 
-      // Yield hero
+      // All-time actuals — sum of every monthly report (our own rental share, USD)
+      const reports = a.reports || [];
+      const monthsCount = reports.length;
+      const haveData = monthsCount > 0;
+      const allRental = reports.reduce((s, r) => s + (typeof r.rentalIncomeUsd === "number" ? r.rentalIncomeUsd : 0), 0);
+      const allReserves = reservesMo * monthsCount;
+      const allNet = haveData ? (allRental - allReserves) : null;
+      const avgNetMo = haveData ? (allNet / monthsCount) : null;
+      const annualYield = (avgNetMo != null && a.value) ? (avgNetMo * 12 / a.value * 100) : null;
+      const first = haveData ? reports[0].period : null;
+      const last = haveData ? reports[monthsCount - 1].period : null;
+      const range = !haveData ? null : (first === last ? first : (first + " – " + last));
+
+      // Yield hero (annualized net profit sent to the RWT Engine)
       $("netyield").classList.remove("skel");
-      if (netAnnual != null && a.value) {
-        const ny = netAnnual / a.value * 100;
-        $("netyield").textContent = pct(ny);
-        $("netyield").classList.toggle("pos", ny >= 0);
-        $("netyield").classList.toggle("neg", ny < 0);
-        const gy = grossAnnual / a.value * 100;
-        $("yieldsub").textContent = "net of insurance & amortization · gross " + pct(gy);
+      if (annualYield != null) {
+        $("netyield").textContent = pct(annualYield);
+        $("netyield").classList.toggle("pos", annualYield >= 0);
+        $("netyield").classList.toggle("neg", annualYield < 0);
+        $("yieldsub").textContent = "net profit to the RWT Engine · annualized";
       } else {
         $("netyield").textContent = "TBA";
-        $("yieldsub").textContent = "set rental income to compute";
+        $("yieldsub").textContent = "awaiting first monthly report";
       }
 
-      // Income stats
+      // All-time totals (accumulate as new monthly reports are added)
+      $("period").textContent = "All-time" + (range ? " · " + range : "") + (monthsCount > 1 ? " · " + monthsCount + " mo" : "");
       $("gross").classList.remove("skel"); $("costs").classList.remove("skel"); $("net").classList.remove("skel");
-      $("gross").textContent = grossAnnual != null ? usd0(grossAnnual) : "TBA";
-      $("costs").textContent = costsAnnual != null ? usd0(costsAnnual) : "TBA";
-      $("net").textContent = netAnnual != null ? usd0(netAnnual) : "TBA";
+      $("gross").textContent = haveData ? usd(allRental) : "TBA";
+      $("costs").textContent = haveData ? (allReserves ? "−" + usd(allReserves) : usd(0)) : "TBA";
+      $("net").textContent = allNet != null ? usd(allNet) : "TBA";
 
-      // Monthly reserve
-      const amoMo = amoAnnual != null ? amoAnnual / 12 : null;
-      const insMo = insAnnual != null ? insAnnual / 12 : null;
+      // Reserve breakdown (per month)
       $("ins").classList.remove("skel"); $("amo").classList.remove("skel"); $("res").classList.remove("skel");
       $("ins").textContent = insMo != null ? usd(insMo) : "TBA";
-      $("ins-s").textContent = insAnnual != null ? usd0(insAnnual) + " / yr" : "per month";
+      $("ins-s").textContent = (typeof a.insuranceAnnual === "number") ? usd0(a.insuranceAnnual) + " / yr" : "per month";
       $("amo").textContent = amoMo != null ? usd(amoMo) : "TBA";
       $("amo-s").textContent = a.amortRateAnnualPct ? a.amortRateAnnualPct + "% / yr" : "per month";
 
-      if (amoMo != null || insMo != null) {
-        $("total").textContent = usd((amoMo || 0) + (insMo || 0));
+      if (reservesMo) {
+        $("total").textContent = usd(reservesMo);
         $("breakdown").textContent = "(amortization " + usd(amoMo || 0) + " + insurance " + usd(insMo || 0) + ")";
       } else { $("total").textContent = "TBA"; }
 
