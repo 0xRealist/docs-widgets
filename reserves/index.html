@@ -43,6 +43,14 @@
   .wallet a:hover { text-decoration: underline; }
   .foot { margin-top: 0.85rem; font-size: 10.5px; color: var(--muted); display: flex; justify-content: space-between; gap: 1rem; }
   .err { color: var(--err); } .skel { color: var(--muted); }
+  .chart { display: flex; align-items: flex-end; gap: 5px; height: 132px; padding: 0.5rem 0 0; }
+  .bar { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; height: 100%; min-width: 0; }
+  .bar .amt { font-size: 8.5px; font-weight: 700; color: var(--fg); white-space: nowrap; opacity: 0; }
+  .bar.has .amt { opacity: 1; }
+  .bar .col { width: 100%; max-width: 26px; min-height: 3px; border-radius: 4px 4px 2px 2px; background: linear-gradient(180deg, #aebfdb, #6f83aa); }
+  .bar:not(.has) .col { background: var(--panel2); }
+  .bar .m { font-size: 8.5px; letter-spacing: 0.02em; color: var(--muted); white-space: nowrap; }
+  .bar.has .m { color: var(--fg); }
   @media (max-width: 480px) {
     .card { padding: 1rem 1.05rem 0.95rem; border-radius: 14px; }
     .hero { font-size: 30px; }
@@ -73,22 +81,8 @@
       <div class="stat"><div class="k">Net income</div><div id="net" class="v skel">—</div><div class="s">to the RWT Engine</div></div>
     </div>
 
-    <div class="sect">Monthly reserve</div>
-    <div class="stats">
-      <div class="stat"><div class="k"><i style="background:var(--ins)"></i> Insurance</div><div id="ins" class="v skel">—</div><div id="ins-s" class="s">per month</div></div>
-      <div class="stat"><div class="k"><i style="background:var(--amo)"></i> Amortization</div><div id="amo" class="v skel">—</div><div id="amo-s" class="s">per month</div></div>
-      <div class="stat"><div class="k"><i style="background:var(--res)"></i> Reserve</div><div id="res" class="v skel">—</div><div class="s">accumulated on-chain</div></div>
-    </div>
-
-    <div class="setaside">Set aside each month: <b id="total">—</b> <span id="breakdown"></span></div>
-
-    <div class="wallet">
-      <div>
-        <div class="wk">Amortization wallet</div>
-        <div id="wallet" class="wv mono skel">TBA</div>
-      </div>
-      <a id="wlink" href="#" target="_blank" rel="noreferrer" style="display:none">verify on-chain ↗</a>
-    </div>
+    <div class="sect">Revenue · 12 months</div>
+    <div class="chart" id="chart"><div class="skel" style="font-size:11px">—</div></div>
 
     <div class="foot">
       <span id="status">Loading…</span>
@@ -184,28 +178,34 @@
       $("costs").textContent = haveData ? (allReserves ? "−" + usd(allReserves) : usd(0)) : "TBA";
       $("net").textContent = allNet != null ? usd(allNet) : "TBA";
 
-      // Reserve breakdown (per month)
-      $("ins").classList.remove("skel"); $("amo").classList.remove("skel"); $("res").classList.remove("skel");
-      $("ins").textContent = insMo != null ? usd(insMo) : "TBA";
-      $("ins-s").textContent = (typeof a.insuranceAnnual === "number") ? usd0(a.insuranceAnnual) + " / yr" : "per month";
-      $("amo").textContent = amoMo != null ? usd(amoMo) : "TBA";
-      $("amo-s").textContent = a.amortRateAnnualPct ? a.amortRateAnnualPct + "% / yr" : "per month";
-
-      if (reservesMo) {
-        $("total").textContent = usd(reservesMo);
-        $("breakdown").textContent = "(amortization " + usd(amoMo || 0) + " + insurance " + usd(insMo || 0) + ")";
-      } else { $("total").textContent = "TBA"; }
-
-      if (a.amortWallet) {
-        $("wallet").classList.remove("skel");
-        $("wallet").textContent = shortAddr(a.amortWallet);
-        const link = $("wlink"); link.href = "https://solscan.io/account/" + a.amortWallet; link.style.display = "inline";
-        const bal = await reserveUsd(a.amortWallet);
-        $("res").textContent = bal != null ? usd0(bal) : "—";
-      } else {
-        $("wallet").textContent = "TBA";
-        $("res").textContent = "TBA";
+      // Revenue chart — 12 months from inception, fills in as reports arrive
+      const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const byPeriod = {};
+      reports.forEach((r) => { if (r.period && typeof r.rentalIncomeUsd === "number") byPeriod[r.period] = r.rentalIncomeUsd; });
+      const sp = (first || "Jun 2026").split(" ");
+      let sm = MONTHS.indexOf(sp[0]), sy = parseInt(sp[1], 10);
+      if (sm < 0 || isNaN(sy)) { sm = 0; sy = 2026; }
+      const TRACK = 96;
+      const slots = [];
+      let maxRev = 0;
+      for (let k = 0; k < 12; k++) {
+        const mi = (sm + k) % 12;
+        const yr = sy + Math.floor((sm + k) / 12);
+        const key = MONTHS[mi] + " " + yr;
+        const has = byPeriod[key] != null;
+        const rev = has ? byPeriod[key] : 0;
+        if (rev > maxRev) maxRev = rev;
+        slots.push({ label: MONTHS[mi], key: key, rev: rev, has: has });
       }
+      const scale = maxRev > 0 ? maxRev : 1;
+      $("chart").innerHTML = slots.map((s) => {
+        const hpx = s.has && s.rev > 0 ? Math.max(6, Math.round(s.rev / scale * TRACK)) : 3;
+        return '<div class="bar' + (s.has ? " has" : "") + '" title="' + s.key + (s.has ? " · " + usd(s.rev) : " · no report") + '">' +
+          '<span class="amt">' + (s.has ? usd0(s.rev) : "") + '</span>' +
+          '<span class="col" style="height:' + hpx + 'px"></span>' +
+          '<span class="m">' + s.label + '</span>' +
+        '</div>';
+      }).join("");
 
       $("status").textContent = "Updated " + new Date().toISOString().slice(11, 19) + " UTC";
       $("status").classList.remove("err");
