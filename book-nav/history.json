@@ -360,6 +360,15 @@
       "holders": 16,
       "holders_unique": 156,
       "apy": 1.98
+    },
+    {
+      "t": "2026-07-24",
+      "nav": 1.00221,
+      "capital": 25390,
+      "supply": 25334,
+      "holders": 16,
+      "holders_unique": 156,
+      "apy": 1.94
     }
   ]
 }
