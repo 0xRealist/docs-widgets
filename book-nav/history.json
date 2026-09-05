@@ -750,12 +750,12 @@
     },
     {
       "t": "2026-09-05",
-      "nav": 1.00221,
+      "nav": 1.002302,
       "capital": 25390,
-      "supply": 25334,
-      "holders": 17,
-      "holders_unique": 156,
-      "apy": 0.95
+      "supply": 25331,
+      "holders": 16,
+      "holders_unique": 155,
+      "apy": 0.99
     }
   ]
 }
